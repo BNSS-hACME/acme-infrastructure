@@ -1,0 +1,12 @@
+---
+- name: Install unbound
+  ansible.builtin.apt:
+    name: unbound
+    state: present
+
+- name: Ensure systemd-resolved is stopped, disabled and masked
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: false
+    masked: true

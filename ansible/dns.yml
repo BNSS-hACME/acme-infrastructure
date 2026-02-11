@@ -1,0 +1,7 @@
+---
+- name: Install and configure DNS resolver
+  hosts: dns
+  become: yes
+  roles:
+    - common
+    - unbound

@@ -1,0 +1,7 @@
+---
+- name: Install and configure VPN
+  hosts: vpn
+  become: yes
+  roles:
+    - common
+    - wireguard

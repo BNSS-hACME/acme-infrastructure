@@ -1,0 +1,12 @@
+vpn.server.acme
+dns.server.acme
+cloud.server.acme
+
+[vpn]
+vpn.server.acme
+
+[dns]
+dns.server.acme
+
+[nextcloud]
+cloud.server.acme
