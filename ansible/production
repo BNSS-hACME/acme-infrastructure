@@ -1,6 +1,10 @@
+router.server.acme
 vpn.server.acme
 dns.server.acme
 cloud.server.acme
+
+[router]
+router.server.acme
 
 [vpn]
 vpn.server.acme
