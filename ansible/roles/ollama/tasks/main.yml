@@ -1,0 +1,39 @@
+- name: Install dependencies
+  apt:
+    name: curl
+    state: present
+    update_cache: yes
+
+- name: Install Ollama
+  shell: curl -sSL https://ollama.com/install.sh | sh
+  args:
+    creates: /usr/local/bin/ollama
+
+- name: Configure Ollama service
+  copy:
+    dest: /etc/systemd/system/ollama.service
+    content: |
+      [Unit]
+      Description=Ollama Service
+
+      [Service]
+      ExecStart=/usr/local/bin/ollama serve --host {{ ollama_host }} --port {{ ollama_port }}
+      Restart=always
+      User=root
+
+     
+  notify: Restart Ollama service
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+    
+- name: Restart Ollama service
+  systemd:
+    name: ollama
+    state: restarted
+    enabled: yes
+
+- name: Pull models
+  command: ollama pull {{ item }}
+  loop: "{{ ollama_models }}"
