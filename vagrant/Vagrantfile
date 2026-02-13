@@ -58,12 +58,67 @@ Vagrant.configure("2") do |config|
         ip: opts[:ip],
         netmask: "255.255.255.0"
 
-      # Per-VM cloud-init
-      if opts[:cloud_init]
-        node.vm.cloud_init do |cloud_init|
-          cloud_init.content_type = "text/cloud-config"
-          cloud_init.inline = "hostname: #{name}\n" + opts[:cloud_init]
+      # Per-VM cloud-init with network configuration
+      node.vm.cloud_init do |cloud_init|
+        cloud_init.content_type = "text/cloud-config"
+        
+        # Build cloud-config with network setup
+        cloud_config = {
+          "hostname" => name,
+          "write_files" => [
+            {
+              "path" => "/etc/systemd/network/10-enp0s9.network",
+              "content" => <<~NETWORK.chomp,
+                [Match]
+                Name=enp0s9
+
+                [Network]
+                DHCP=no
+                Address=#{opts[:ip]}/24
+                Gateway=10.0.50.1
+                DNS=10.0.50.10
+                RouteMetric=10
+
+                [Route]
+                Gateway=10.0.50.1
+                Metric=10
+              NETWORK
+              "permissions" => "0644"
+            },
+            {
+              "path" => "/etc/systemd/network/20-enp0s8.network",
+              "content" => <<~NETWORK.chomp,
+                [Match]
+                Name=enp0s8
+
+                [Network]
+                DHCP=yes
+                RouteMetric=200
+
+                [DHCP]
+                UseRoutes=yes
+                UseDNS=no
+
+                [DHCPv4]
+                RouteMetric=200
+              NETWORK
+              "permissions" => "0644"
+            }
+          ],
+          "runcmd" => [
+            "systemctl enable systemd-networkd",
+            "systemctl restart systemd-networkd"
+          ]
+        }
+
+        # Merge per-VM packages if specified
+        if opts[:cloud_init]
+          require 'yaml'
+          vm_config = YAML.load(opts[:cloud_init])
+          cloud_config.merge!(vm_config)
         end
+
+        cloud_init.inline = cloud_config.to_yaml
       end
 
       node.vm.provider :virtualbox do |vb|
