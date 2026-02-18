@@ -34,6 +34,14 @@ MACHINES = {
         - nginx
     YAML
   },
+  "dvwa.server.acme" => {
+    ip: "10.0.50.50",
+    memory: 752,
+    cpus: 1,
+    cloud_init: <<~YAML,
+      package_update: true
+    YAML
+  },
 }
 
 Vagrant.configure("2") do |config|

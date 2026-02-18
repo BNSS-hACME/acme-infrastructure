@@ -14,3 +14,7 @@ dns.server.acme
 
 [nextcloud]
 cloud.server.acme
+
+[dvwa]
+dvwa.server.acme
+
