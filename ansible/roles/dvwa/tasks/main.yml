@@ -49,6 +49,7 @@
   args:
     creates: /etc/apache2/mods-enabled/rewrite.load
 
+  register: enable_rewrite_module
 
 # --- LOGGING SETUP ---
 - name: Deploy DVWA apache site config
@@ -56,18 +57,24 @@
     src: dvwa.conf.j2
     dest: /etc/apache2/sites-available/dvwa.conf
     mode: "0644"
+  register: dvwa_site_conf
 
 - name: Disable default apache site
   command: a2dissite 000-default.conf
-  args:
-    removes: /etc/apache2/sites-enabled/000-default.conf
+  ignore_errors: true
+  register: disable_default_site
 
 - name: Enable DVWA site
   command: a2ensite dvwa.conf
   args:
     creates: /etc/apache2/sites-enabled/dvwa.conf
+  register: enable_dvwa_site
 
 - name: Restart Apache
   service:
     name: apache2
     state: restarted
+  when: enable_rewrite_module is changed
+        or dvwa_site_conf is changed
+        or disable_default_site is changed
+        or enable_dvwa_site is changed
