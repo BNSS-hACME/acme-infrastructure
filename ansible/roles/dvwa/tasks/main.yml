@@ -59,7 +59,8 @@
 
 - name: Disable default apache site
   command: a2dissite 000-default.conf
-  ignore_errors: true
+  args:
+    removes: /etc/apache2/sites-enabled/000-default.conf
 
 - name: Enable DVWA site
   command: a2ensite dvwa.conf
