@@ -28,9 +28,7 @@
   git:
     repo: https://github.com/digininja/DVWA.git
     dest: /var/www/html/dvwa
-    version: master
-    force: true
-
+    version: "v1.10"
 - name: Deploy DVWA config
   template:
     src: config.inc.php.j2
