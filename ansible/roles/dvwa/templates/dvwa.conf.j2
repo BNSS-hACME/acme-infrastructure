@@ -1,0 +1,15 @@
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/html
+
+    Alias /dvwa /var/www/html/dvwa
+
+    <Directory /var/www/html/dvwa>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    LogLevel debug
+    CustomLog /var/log/apache2/dvwa_access.log combined
+    ErrorLog /var/log/apache2/dvwa_error.log
+</VirtualHost>

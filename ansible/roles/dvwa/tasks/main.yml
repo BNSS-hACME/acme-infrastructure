@@ -1,14 +1,16 @@
 - name: install dependencies
   apt:
-    - apache2
-    - mariadb-server
-    - php
-    - php-mysqli
-    - php-gd
-    - php-xml 
-    - git
-    - libapache2-mod-php
-  state: present
+    update_cache: yes
+    name:
+      - apache2
+      - mariadb-server
+      - php
+      - php-mysqli
+      - php-gd
+      - php-xml
+      - git
+      - libapache2-mod-php
+    state: present
 
 - name: apache running
   service:
@@ -27,16 +29,7 @@
     repo: https://github.com/digininja/DVWA.git
     dest: /var/www/html/dvwa
     version: master
-    force: yes
-
- 
-- name: Deploy DVWA config
-  template:
-    src: config.inc.php.j2
-    dest: /var/www/html/dvwa/config/config.inc.php
-    owner: www-data
-    group: www-data
-    mode: "0644"
+    force: true
 
 - name: Deploy DVWA config
   template:
@@ -57,6 +50,23 @@
   command: a2enmod rewrite
   args:
     creates: /etc/apache2/mods-enabled/rewrite.load
+
+
+# --- LOGGING SETUP ---
+- name: Deploy DVWA apache site config
+  template:
+    src: dvwa.conf.j2
+    dest: /etc/apache2/sites-available/dvwa.conf
+    mode: "0644"
+
+- name: Disable default apache site
+  command: a2dissite 000-default.conf
+  ignore_errors: true
+
+- name: Enable DVWA site
+  command: a2ensite dvwa.conf
+  args:
+    creates: /etc/apache2/sites-enabled/dvwa.conf
 
 - name: Restart Apache
   service:
