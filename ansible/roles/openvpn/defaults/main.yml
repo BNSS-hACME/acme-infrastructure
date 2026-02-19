@@ -1,2 +1,11 @@
 ---
 openvpn_server_name: "server"
+
+# openvpn-auth-oauth2
+openvpn_auth_oauth2_version: "1.27.0"
+openvpn_auth_oauth2_http_listen: ":9090"
+openvpn_auth_oauth2_http_baseurl: "http://{{ ansible_facts.default_ipv4.address }}:9090"
+openvpn_auth_oauth2_issuer: "https://keycloak.example.com/realms/openvpn"
+openvpn_auth_oauth2_provider: "generic"
+openvpn_auth_oauth2_mgmt_port: 7505
+openvpn_auth_oauth2_auth_token_lifetime: 28800

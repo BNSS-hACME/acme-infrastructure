@@ -308,3 +308,9 @@ verb 3
 # Notify the client that when the server restarts so it
 # can automatically reconnect.
 explicit-exit-notify 1
+
+# ---- openvpn-auth-oauth2 (SSO via OIDC) ----
+management 127.0.0.1 {{ openvpn_auth_oauth2_mgmt_port }} /etc/openvpn/server/management-password.txt
+management-client-auth
+auth-user-pass-optional
+auth-gen-token {{ openvpn_auth_oauth2_auth_token_lifetime }} external-auth

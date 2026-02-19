@@ -1,25 +1,60 @@
 ---
+# ---- OpenVPN server ----
+
 - name: Install OpenVPN
   ansible.builtin.apt:
     name: openvpn
     state: present
+
+- name: Deploy management password file
+  ansible.builtin.template:
+    src: management-password.txt.j2
+    dest: /etc/openvpn/server/management-password.txt
+    owner: root
+    group: root
+    mode: "0600"
   notify: restart openvpn
 
 - name: Configure OpenVPN
-  ansible.builtin.copy:
-    src: templates/server.conf.j2
+  ansible.builtin.template:
+    src: server.conf.j2
     dest: /etc/openvpn/server/server.conf
     mode: "0644"
   notify: restart openvpn
 
-- name: enable openvpn-server@{{ openvpn_server_name }}
+- name: Enable openvpn-server@{{ openvpn_server_name }}
   ansible.builtin.systemd:
     name: openvpn-server@{{ openvpn_server_name }}
     enabled: true
 
-- name: configure sysctl for OpenVPN
+- name: Enable IP forwarding
   ansible.builtin.sysctl:
     name: net.ipv4.ip_forward
-    value: 1
+    value: "1"
     state: present
-  notify: restart openvpn
+
+# ---- openvpn-auth-oauth2 ----
+
+- name: Determine deb architecture
+  ansible.builtin.set_fact:
+    _oauth2_deb_arch: "{{ 'arm64' if ansible_facts.architecture == 'aarch64' else 'amd64' }}"
+
+- name: Install openvpn-auth-oauth2
+  ansible.builtin.apt:
+    deb: "https://github.com/jkroepke/openvpn-auth-oauth2/releases/download/v{{ openvpn_auth_oauth2_version }}/openvpn-auth-oauth2_{{ openvpn_auth_oauth2_version }}_linux_{{ _oauth2_deb_arch }}.deb"
+    state: present
+
+- name: Deploy openvpn-auth-oauth2 config
+  ansible.builtin.template:
+    src: openvpn-auth-oauth2.yaml.j2
+    dest: /etc/openvpn-auth-oauth2/config.yaml
+    owner: root
+    group: openvpn-auth-oauth2
+    mode: "0640"
+  notify: restart openvpn-auth-oauth2
+
+- name: Enable and start openvpn-auth-oauth2
+  ansible.builtin.systemd:
+    name: openvpn-auth-oauth2
+    enabled: true
+    state: started
