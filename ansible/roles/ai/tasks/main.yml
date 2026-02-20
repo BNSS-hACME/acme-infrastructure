@@ -36,10 +36,16 @@
 
       [Install]
       WantedBy=multi-user.target
-  notify:
-    - Reload systemd
-    - Restart Ollama service
+  register: ollama_unit
 
+- name: Reload systemd and restart Ollama when unit file changes
+  become: true
+  ansible.builtin.systemd:
+    name: ollama
+    state: restarted
+    enabled: true
+    daemon_reload: true
+  when: ollama_unit is changed
 - name: Ensure Ollama service is enabled and started
   become: true
   ansible.builtin.systemd:
