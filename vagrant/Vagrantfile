@@ -108,7 +108,7 @@ Vagrant.configure("2") do |config|
 
                 [DHCP]
                 UseRoutes=yes
-                UseDNS=no
+                UseDNS=yes
 
                 [DHCPv4]
                 RouteMetric=200
