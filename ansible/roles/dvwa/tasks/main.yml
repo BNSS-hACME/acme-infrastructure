@@ -24,6 +24,29 @@
     state: started
     enabled: true
 
+- name: install python3-pymysql
+  ansible.builtin.apt:
+    name: python3-pymysql
+    state: present
+
+- name: create dvwa database
+  community.mysql.mysql_db:
+    name: "{{ dvwa_db_database }}"
+    state: present
+    login_user: root
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: create dvwa database user
+  community.mysql.mysql_user:
+    name: "{{ dvwa_db_user }}"
+    password: "{{ dvwa_db_password }}"
+    priv: "{{ dvwa_db_database }}.*:ALL"
+    # host matches db_server in config.inc.php (TCP via 127.0.0.1)
+    host: "127.0.0.1"
+    state: present
+    login_user: root
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
 - name: clone dvwa
   ansible.builtin.git:
     repo: https://github.com/digininja/DVWA.git
