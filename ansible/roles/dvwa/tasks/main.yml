@@ -28,7 +28,9 @@
   ansible.builtin.git:
     repo: https://github.com/digininja/DVWA.git
     dest: /var/www/html/dvwa
-    version: "v1.10"
+    version: master
+    update: yes
+
 - name: Deploy DVWA config
   ansible.builtin.template:
     src: config.inc.php.j2
