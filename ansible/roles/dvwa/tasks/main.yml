@@ -24,7 +24,7 @@
     state: started
     enabled: true
 
-- name: install python3-pymysql for ansible mysql modules
+- name: install python3-pymysql
   ansible.builtin.apt:
     name: python3-pymysql
     state: present
@@ -33,6 +33,7 @@
   community.mysql.mysql_db:
     name: "{{ dvwa_db_database }}"
     state: present
+    login_user: root
     login_unix_socket: /var/run/mysqld/mysqld.sock
 
 - name: create dvwa database user
@@ -40,9 +41,11 @@
     name: "{{ dvwa_db_user }}"
     password: "{{ dvwa_db_password }}"
     priv: "{{ dvwa_db_database }}.*:ALL"
+    host: "127.0.0.1"
     state: present
+    login_user: root
     login_unix_socket: /var/run/mysqld/mysqld.sock
-
+    
 - name: Read root git safe.directory list (if any)
   become: true
   ansible.builtin.command: git config --global --get-all safe.directory
