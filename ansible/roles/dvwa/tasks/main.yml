@@ -24,13 +24,50 @@
     state: started
     enabled: true
 
+- name: install python3-pymysql for ansible mysql modules
+  ansible.builtin.apt:
+    name: python3-pymysql
+    state: present
+
+- name: create dvwa database
+  community.mysql.mysql_db:
+    name: "{{ dvwa_db_database }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: create dvwa database user
+  community.mysql.mysql_user:
+    name: "{{ dvwa_db_user }}"
+    password: "{{ dvwa_db_password }}"
+    priv: "{{ dvwa_db_database }}.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Read root git safe.directory list (if any)
+  become: true
+  ansible.builtin.command: git config --global --get-all safe.directory
+  register: root_safe_dirs
+  changed_when: false
+  failed_when: false
+
+- name: Add DVWA as root safe.directory
+  become: true
+  ansible.builtin.command: git config --global --add safe.directory /var/www/html/dvwa
+  when: (root_safe_dirs.stdout | regex_search('(?m)^/var/www/html/dvwa$')) is none 
+
+- name: Check if DVWA repo already exists
+  ansible.builtin.stat:
+    path: /var/www/html/dvwa/.git
+  register: dvwa_repo
+
 - name: clone dvwa
   ansible.builtin.git:
     repo: https://github.com/digininja/DVWA.git
     dest: /var/www/html/dvwa
     version: master
     update: yes
-
+  when: not dvwa_repo.stat.exists
+  
 - name: Deploy DVWA config
   ansible.builtin.template:
     src: config.inc.php.j2
