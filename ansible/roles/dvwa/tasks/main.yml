@@ -1,5 +1,5 @@
 - name: install dependencies
-  apt:
+  ansible.builtin.apt:
     update_cache: yes
     name:
       - apache2
@@ -13,26 +13,26 @@
     state: present
 
 - name: apache running
-  service:
+  ansible.builtin.service:
     name: apache2
     state: started
     enabled: true
 
 - name: mariadb running
-  service:
+  ansible.builtin.service:
     name: mariadb
     state: started
     enabled: true
 
 - name: clone dvwa
-  git:
+  ansible.builtin.git:
     repo: https://github.com/digininja/DVWA.git
     dest: /var/www/html/dvwa
     version: master
     force: true
 
 - name: Deploy DVWA config
-  template:
+  ansible.builtin.template:
     src: config.inc.php.j2
     dest: /var/www/html/dvwa/config/config.inc.php
     owner: www-data
@@ -40,35 +40,35 @@
     mode: "0644"
 
 - name: Fix permissions
-  file:
+  ansible.builtin.file:
     path: /var/www/html/dvwa
     owner: www-data
     group: www-data
     recurse: yes
 
 - name: Enable Apache rewrite module
-  command: a2enmod rewrite
+  ansible.builtin.command: a2enmod rewrite
   args:
     creates: /etc/apache2/mods-enabled/rewrite.load
 
 
 # --- LOGGING SETUP ---
 - name: Deploy DVWA apache site config
-  template:
+  ansible.builtin.template:
     src: dvwa.conf.j2
     dest: /etc/apache2/sites-available/dvwa.conf
     mode: "0644"
 
 - name: Disable default apache site
-  command: a2dissite 000-default.conf
+  ansible.builtin.command: a2dissite 000-default.conf
   ignore_errors: true
 
 - name: Enable DVWA site
-  command: a2ensite dvwa.conf
+  ansible.builtin.command: a2ensite dvwa.conf
   args:
     creates: /etc/apache2/sites-enabled/dvwa.conf
 
 - name: Restart Apache
-  service:
+  ansible.builtin.service:
     name: apache2
     state: restarted
