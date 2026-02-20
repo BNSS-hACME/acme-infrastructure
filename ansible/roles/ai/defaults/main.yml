@@ -1,4 +1,4 @@
-ollama_host: "0.0.0.0"
+ollama_host: "127.0.0.1"
 ollama_port: 11434
 
 ollama_models:
