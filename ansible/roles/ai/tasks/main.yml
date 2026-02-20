@@ -30,7 +30,7 @@
       ExecStart=/usr/local/bin/ollama serve
       Restart=always
       RestartSec=2
-      User=root
+      DynamicUser=yes
 
       [Install]
       WantedBy=multi-user.target
