@@ -16,6 +16,5 @@ services:
       - KC_HOSTNAME={{ inventory_hostname }}
       - KC_HOSTNAME_STRICT=false
       - KC_HTTP_ENABLED=false
-      #- KC_HTTPS_CERTIFICATE_FILE=/etc/x509/https/tls.crt
-      #- KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/x509/https/tls.key
-      # NOTE: Uncomment KC_HTTPS lines above once Step-CA or real certs are placed in /var/lib/keycloak/certs/
+      - KC_HTTPS_CERTIFICATE_FILE=/etc/x509/https/tls.crt
+      - KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/x509/https/tls.key
