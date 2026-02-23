@@ -1,0 +1,108 @@
+# Unbound configuration file for {{ ansible_hostname }}
+# Managed by Ansible - Do not edit manually
+
+server:
+    # Network interface to listen on
+{% if unbound_interface is defined %}
+    interface: {{ unbound_interface }}
+{% endif %}
+{% if unbound_port is defined %}
+    port: {{ unbound_port }}
+{% endif %}
+
+    # Listen on IPv6 if enabled
+{% if unbound_ipv6_enabled | default(false) %}
+    interface: ::0
+    do-ip6: yes
+{% else %}
+    do-ip6: no
+{% endif %}
+
+    # Access control
+{% for subnet in unbound_access_control %}
+    access-control: {{ subnet.network }} {{ subnet.action }}
+{% endfor %}
+
+    # Performance tuning (optional - uncomment to override Unbound defaults)
+{% if unbound_num_threads is defined %}
+    num-threads: {{ unbound_num_threads }}
+{% endif %}
+{% if unbound_rrset_cache_size is defined %}
+    rrset-cache-size: {{ unbound_rrset_cache_size }}
+{% endif %}
+{% if unbound_msg_cache_size is defined %}
+    msg-cache-size: {{ unbound_msg_cache_size }}
+{% endif %}
+
+    # Privacy and security
+    hide-identity: yes
+    hide-version: yes
+    harden-glue: yes
+    harden-dnssec-stripped: yes
+    harden-below-nxdomain: yes
+    harden-referral-path: yes
+    use-caps-for-id: yes
+
+    # Logging
+{% if unbound_verbosity is defined %}
+    verbosity: {{ unbound_verbosity }}
+{% endif %}
+{% if unbound_log_queries | default(false) %}
+    log-queries: yes
+{% endif %}
+{% if unbound_logfile is defined %}
+    logfile: "{{ unbound_logfile }}"
+{% endif %}
+
+    # Do not query the following
+    do-not-query-localhost: yes
+
+    # Unwanted replies
+{% if unbound_unwanted_reply_threshold is defined %}
+    unwanted-reply-threshold: {{ unbound_unwanted_reply_threshold }}
+{% endif %}
+
+    # Private addresses
+    private-address: 10.0.0.0/8
+    private-address: 172.16.0.0/12
+    private-address: 192.168.0.0/16
+    private-address: 169.254.0.0/16
+    private-address: fd00::/8
+    private-address: fe80::/10
+
+{% if unbound_local_zones is defined %}
+# Local zones
+{% for zone in unbound_local_zones %}
+    local-zone: "{{ zone.name }}" {{ zone.type }}
+{% endfor %}
+{% endif %}
+
+{% if unbound_local_data is defined %}
+# Local data
+{% for record in unbound_local_data %}
+    local-data: "{{ record }}"
+{% endfor %}
+{% endif %}
+
+{% if unbound_forward_zones is defined %}
+# Forward zones
+{% for zone in unbound_forward_zones %}
+forward-zone:
+    name: "{{ zone.name }}"
+{% for server in zone.forward_addresses %}
+    forward-addr: {{ server }}
+{% endfor %}
+{% if zone.forward_first | default(false) %}
+    forward-first: yes
+{% endif %}
+{% endfor %}
+{% endif %}
+
+# Root hints - using system default from dns-root-data package
+
+# Include additional configuration files
+{% if unbound_include_configs is defined %}
+{% for config in unbound_include_configs %}
+include: "{{ config }}"
+{% endfor %}
+{% endif %}
