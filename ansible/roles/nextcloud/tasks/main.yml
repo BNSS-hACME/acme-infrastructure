@@ -6,7 +6,7 @@
     update_cache: yes
 
 - name: 2. Create Nextcloud Directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: '0755'
@@ -16,7 +16,7 @@
     - /var/lib/nextcloud/ca-certificates
 
 - name: 2b. Set Nextcloud Certificate Directory Permissions
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: "33"
@@ -38,26 +38,26 @@
 # ---------------------------------------------------------
 
 - name: 3. Copy Docker Compose to VM
-  template:
+  ansible.builtin.template:
     src: docker-compose.yml.j2
     dest: /opt/nextcloud/docker-compose.yml
     mode: '0644'
 
 - name: 4. Run Nextcloud Stack
-  shell: "docker compose -f /opt/nextcloud/docker-compose.yml up -d"
+  ansible.builtin.shell: "docker compose -f /opt/nextcloud/docker-compose.yml up -d"
 
 - name: 5. Wait for Nextcloud container to be ready
-  pause:
+  ansible.builtin.pause:
     seconds: 20
 
 - name: 6. Check if Nextcloud is already installed
-  shell: "docker exec -u 33 nextcloud-app php occ status --output=json"
+  ansible.builtin.shell: "docker exec -u 33 nextcloud-app php occ status --output=json"
   register: nc_status
   ignore_errors: yes
   changed_when: false
 
 - name: 7. Run Nextcloud basic installation
-  shell: |
+  ansible.builtin.shell: |
     docker exec -u 33 nextcloud-app php occ maintenance:install \
       --database "mysql" --database-name "nextcloud" \
       --database-user "nextcloud" --database-pass "{{ vault_nextcloud_db_password }}" \
@@ -66,7 +66,7 @@
   when: (nc_status.stdout | default('{"installed":false}') | from_json).installed == false
 
 - name: 8. Install and Enable Nextcloud Talk (spreed)
-  shell: |
+  ansible.builtin.shell: |
     docker exec -u 33 nextcloud-app php occ app:install spreed
   register: spreed_install
   failed_when: 
@@ -77,7 +77,7 @@
 
 
 - name: 10. Hardcode ACME Trusted Domains and Setup Network Security
-  shell: |
+  ansible.builtin.shell: |
     docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 0 --value="localhost"
     docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 1 --value="cloud.server.acme"
     
@@ -92,7 +92,7 @@
   ignore_errors: yes
 
 - name: 11. Install and Enable OIDC App
-  shell: |
+  ansible.builtin.shell: |
     docker exec -u 33 nextcloud-app php occ app:install user_oidc
     docker exec -u 33 nextcloud-app php occ app:enable user_oidc
   register: oidc_install
@@ -102,7 +102,7 @@
   changed_when: '"already installed" not in oidc_install.stdout'
 
 - name: 12. Final OIDC Configuration
-  shell: |
+  ansible.builtin.shell: |
     docker exec -u 33 nextcloud-app php occ config:system:set allow_local_remote_servers --value=true --type=boolean
     docker exec -u 33 nextcloud-app php occ user_oidc:provider "Keycloak" \
       --clientid "nextcloud-client" \
@@ -115,13 +115,13 @@
     docker exec -u 33 nextcloud-app php occ config:app:set bruteforcesettings whitelist --value='["10.0.50.0/24", "10.0.10.0/24", "10.0.20.0/24", "10.0.11.0/24"]'
 
 - name: 13. Trust Step-CA Root Certificate (When available)
-  shell: |
+  ansible.builtin.shell: |
     # The Step-CA root certificate will be injected via Docker Volume /usr/local/share/ca-certificates/
     # This command tells the Nextcloud OS to trust any newly mounted CA certificates.
     docker exec -u 0 nextcloud-app update-ca-certificates
 
 - name: 14. Finalize Secure Web Server State
-  shell: |
+  ansible.builtin.shell: |
     docker exec -u 0 nextcloud-app a2enmod ssl
     docker exec -u 0 nextcloud-app a2ensite default-ssl
     docker restart nextcloud-app

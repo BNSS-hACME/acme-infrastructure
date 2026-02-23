@@ -8,7 +8,7 @@
     update_cache: yes
 
 - name: Create Directory Structure for Keycloak (General)
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: '0755'
@@ -17,7 +17,7 @@
     - /opt/keycloak/import
 
 - name: Create Certificate Directory for Keycloak
-  file:
+  ansible.builtin.file:
     path: /var/lib/keycloak/certs
     state: directory
     owner: "1000"
@@ -34,7 +34,7 @@
 #
 # Example (if certificates are provided elsewhere manually initially):
 # - name: Step-CA placeholder
-#   copy:
+#   ansible.builtin.copy:
 #     src: /tmp/my-certs/tls.crt
 #     dest: /var/lib/keycloak/certs/tls.crt
 #     owner: 1000
@@ -43,17 +43,17 @@
 # ---------------------------------------------------------
 
 - name: Copy realm-export.json
-  template:
+  ansible.builtin.template:
     src: realm-export.json.j2
     dest: /opt/keycloak/import/realm-export.json
     mode: '0644'
 
 - name: Copy docker-compose
-  template:
+  ansible.builtin.template:
     src: docker-compose.yml.j2
     dest: /opt/keycloak/docker-compose.yml
     mode: '0644'
 
 - name: Start Keycloak with Docker Compose
-  shell: docker compose -f /opt/keycloak/docker-compose.yml up -d
+  ansible.builtin.shell: docker compose -f /opt/keycloak/docker-compose.yml up -d
 
