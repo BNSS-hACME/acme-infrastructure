@@ -110,7 +110,7 @@
       --discoveryuri "https://auth.server.acme:8443/realms/acme-realm/.well-known/openid-configuration" \
       --scope "openid profile email"
     docker exec -u 33 nextcloud-app php occ config:system:set oidc_login_auto_redirect --value=true --type=boolean
-    # docker exec -u 33 nextcloud-app php occ config:app:set user_oidc allow_multiple_user_backends --value=0
+    docker exec -u 33 nextcloud-app php occ config:app:set user_oidc allow_multiple_user_backends --value=0
     docker exec -u 33 nextcloud-app php occ config:app:set user_oidc soft_auto_provision --value=1
     docker exec -u 33 nextcloud-app php occ config:app:set bruteforcesettings whitelist --value='["10.0.50.0/24", "10.0.10.0/24", "10.0.20.0/24", "10.0.11.0/24"]'
 
