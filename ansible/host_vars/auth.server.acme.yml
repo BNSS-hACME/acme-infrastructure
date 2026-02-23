@@ -1,2 +1,5 @@
 ---
 ansible_host: 10.0.50.13
+
+keycloak_port: 8443
+#stepca_port: 9000

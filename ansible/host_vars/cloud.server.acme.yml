@@ -1,2 +1,4 @@
 ---
 ansible_host: 10.0.50.12
+
+nextcloud_ports: [80, 443]
