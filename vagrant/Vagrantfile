@@ -34,6 +34,14 @@ MACHINES = {
         - nginx
     YAML
   },
+  "auth.server.acme" => {
+    ip: "10.0.50.13",
+    memory: 4096,
+    cpus: 2,
+    cloud_init: <<~YAML,
+      package_update: true
+    YAML
+  },
 }
 
 Vagrant.configure("2") do |config|

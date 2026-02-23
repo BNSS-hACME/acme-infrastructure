@@ -2,6 +2,7 @@ router.server.acme
 vpn.server.acme
 dns.server.acme
 cloud.server.acme
+auth.server.acme
 
 [router]
 router.server.acme
@@ -11,6 +12,9 @@ vpn.server.acme
 
 [dns]
 dns.server.acme
+
+[keycloak]
+auth.server.acme
 
 [nextcloud]
 cloud.server.acme

@@ -1,0 +1,6 @@
+---
+- name: Deploy Nextcloud Server
+  hosts: nextcloud
+  become: yes
+  roles:
+    - nextcloud
