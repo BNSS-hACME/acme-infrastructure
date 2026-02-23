@@ -1,0 +1,26 @@
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+
+-A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+-A INPUT -i lo -j ACCEPT
+
+{% for rule in global_iptables_rules %}
+{% if rule.proto == 'icmp' %}
+-A INPUT -p icmp -j ACCEPT -m comment --comment "{{ rule.comment }}"
+{% else %}
+-A INPUT -p {{ rule.proto }} --dport {{ rule.port }} -j ACCEPT -m comment --comment "{{ rule.comment }}"
+{% endif %}
+{% endfor %}
+
+{% for rule in host_iptables_rules | default([]) %}
+-A INPUT -p {{ rule.proto }} --dport {{ rule.port }} -j ACCEPT -m comment --comment "{{ rule.comment }}"
+{% endfor %}
+
+{% for net in trusted_source_nets | default([]) %}
+-A INPUT -s {{ net }} -j ACCEPT
+{% endfor %}
+
+COMMIT

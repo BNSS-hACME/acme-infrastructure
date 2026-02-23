@@ -1,0 +1,8 @@
+networks:
+  stockholm_internal: "10.0.10.0/24"
+  london_internal: "10.0.20.0/24"
+  vpn_range: "10.0.11.0/24"
+
+global_iptables_rules:
+  - { proto: tcp, port: 22, comment: "SSH Management" }
+  - { proto: icmp, comment: "Allow Ping" }

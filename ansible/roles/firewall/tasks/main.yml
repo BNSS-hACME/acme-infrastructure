@@ -1,1 +1,15 @@
-- name: Configure firewall rules
+- name: Install iptables-persistent
+  ansible.builtin.package:
+    name: iptables-persistent
+    state: present
+
+- name: Generate firewall rules
+  ansible.builtin.template:
+    src: rules.v4.jz
+    dest: /etc/iptables/rules.v4
+  notify: Apply iptables 
+
+- name: Apply iptables
+  ansible.builtin.shell:
+    iptables-restore < /etc/iptables/rules.v4
+    
