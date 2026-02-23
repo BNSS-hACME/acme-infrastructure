@@ -54,12 +54,6 @@
     dest: /opt/keycloak/docker-compose.yml
     mode: '0644'
 
-- name: Check if Docker Compose is running
-  shell: docker compose -f /opt/keycloak/docker-compose.yml ps -q
-  register: compose_ps
-  ignore_errors: true
-  changed_when: false
-
 - name: Start Keycloak with Docker Compose
   shell: docker compose -f /opt/keycloak/docker-compose.yml up -d
-  when: compose_ps.stdout == ""
+

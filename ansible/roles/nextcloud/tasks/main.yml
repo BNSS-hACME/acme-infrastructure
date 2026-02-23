@@ -74,20 +74,19 @@
     - '"already installed" not in spreed_install.stdout'
   changed_when: '"already installed" not in spreed_install.stdout'
 
-- name: 9. Generate Self-Signed SSL Certificate
-  shell: |
-    docker exec -u 0 nextcloud-app openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-      -keyout /etc/ssl/private/ssl-cert-snakeoil.key \
-      -out /etc/ssl/certs/ssl-cert-snakeoil.pem \
-      -subj "/C=SE/ST=Stockholm/L=Stockholm/O=ACME/OU=IT/CN=nextcloud.acme"
-  ignore_errors: yes
 
-- name: 10. Hardcode ACME Trusted Domains
+
+- name: 10. Hardcode ACME Trusted Domains and Setup Network Security
   shell: |
     docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 0 --value="localhost"
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 1 --value="nextcloud.acme"
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 2 --value="10.0.50.20"
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 3 --value="192.168.88.20"
+    docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 1 --value="cloud.server.acme"
+    
+    # Configure trusted proxies for gateway passing
+    docker exec -u 33 nextcloud-app php occ config:system:set trusted_proxies 0 --value="10.0.50.0/24"
+    docker exec -u 33 nextcloud-app php occ config:system:set trusted_proxies 1 --value="10.0.10.0/24"
+    docker exec -u 33 nextcloud-app php occ config:system:set trusted_proxies 2 --value="10.0.20.0/24"
+    docker exec -u 33 nextcloud-app php occ config:system:set trusted_proxies 3 --value="10.0.11.0/24"
+
     docker exec -u 33 nextcloud-app php occ config:system:set overwriteprotocol --value="https"
     docker exec -u 33 nextcloud-app php occ config:system:delete overwritehost
   ignore_errors: yes
@@ -110,12 +109,10 @@
       --clientsecret "{{ vault_nextcloud_oidc_secret }}" \
       --discoveryuri "https://auth.server.acme:8443/realms/acme-realm/.well-known/openid-configuration" \
       --scope "openid profile email"
-    docker exec -u 33 nextcloud-app php occ config:app:set user_oidc verify_host --value=0
-    docker exec -u 33 nextcloud-app php occ config:app:set user_oidc verify_peer --value=0
     docker exec -u 33 nextcloud-app php occ config:system:set oidc_login_auto_redirect --value=true --type=boolean
-    docker exec -u 33 nextcloud-app php occ config:app:set user_oidc allow_multiple_user_backends --value=0
+    # docker exec -u 33 nextcloud-app php occ config:app:set user_oidc allow_multiple_user_backends --value=0
     docker exec -u 33 nextcloud-app php occ config:app:set user_oidc soft_auto_provision --value=1
-    docker exec -u 33 nextcloud-app php occ config:app:set bruteforcesettings whitelist --value='["192.168.88.1/24"]'
+    docker exec -u 33 nextcloud-app php occ config:app:set bruteforcesettings whitelist --value='["10.0.50.0/24", "10.0.10.0/24", "10.0.20.0/24", "10.0.11.0/24"]'
 
 - name: 13. Trust Step-CA Root Certificate (When available)
   shell: |
