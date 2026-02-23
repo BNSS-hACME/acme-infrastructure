@@ -41,84 +41,73 @@ Vagrant.configure("2") do |config|
   # https://portal.cloud.hashicorp.com/vagrant/discover/cloud-image/debian-13
   config.vm.box_version = "20260210.2384.0"
 
-  # Disable synced folder
   config.vm.synced_folder ".", "/vagrant", disabled: true
-
-  # Keep the insecure key so Ansible can use a single key for all VMs
   config.ssh.insert_key = false
+  config.vm.boot_timeout = 600
+
+  config.vm.define "router.server.acme" do |router|
+    router.vm.hostname = "router.server.acme"
+
+    # External: bridged to physical LAN, 10.0.10.50
+    router.vm.network "public_network",
+      bridge: BRIDGE_ADAPTER,
+      ip: "10.0.10.50",
+      netmask: "255.255.255.0"
+
+    # Internal: shared with MACHINES, 10.0.50.1
+    router.vm.network "private_network",
+      ip: "10.0.50.1",
+      netmask: "255.255.255.0",
+      virtualbox__intnet: "acme-internal"
+
+    # run: always so rules survive vagrant reload
+    router.vm.provision "shell", name: "nat", run: "always", inline: <<~SHELL
+      sysctl -w net.ipv4.ip_forward=1
+      echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/90-router.conf
+
+      # enp0s9 = external (bridged), enp0s10 = internal (acme-internal)
+      iptables -t nat -C POSTROUTING -s 10.0.50.0/24 -o enp0s9 -j MASQUERADE 2>/dev/null || \
+        iptables -t nat -A POSTROUTING -s 10.0.50.0/24 -o enp0s9 -j MASQUERADE
+      iptables -C FORWARD -i enp0s10 -o enp0s9 -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -i enp0s10 -o enp0s9 -j ACCEPT
+      iptables -C FORWARD -i enp0s9 -o enp0s10 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -i enp0s9 -o enp0s10 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+      # Replace Vagrant NAT default route with physical LAN gateway.
+      # 10.0.2.0/24 stays reachable as a directly-connected route on enp0s8 — Vagrant SSH unaffected.
+      ip route del default via 10.0.2.2 2>/dev/null || true
+      ip route add default via 10.0.10.1 dev enp0s9 2>/dev/null || true
+    SHELL
+
+    router.vm.provider :virtualbox do |vb|
+      vb.name = "acme-router.server.acme"
+      vb.memory = 2048
+      vb.cpus = 1
+    end
+  end
 
   MACHINES.each do |name, opts|
     config.vm.define name do |node|
       node.vm.hostname = name
 
-      # Bridge directly Ethernet adapter.
-      # Each VM appears as its own device on the 10.0.50.0/24 network.
-      node.vm.network "public_network",
-        bridge: BRIDGE_ADAPTER,
+      # Internal network only — traffic exits via router.server.acme (10.0.50.1).
+      node.vm.network "private_network",
         ip: opts[:ip],
-        netmask: "255.255.255.0"
+        netmask: "255.255.255.0",
+        virtualbox__intnet: "acme-internal"
 
-      # Per-VM cloud-init with network configuration
-      node.vm.cloud_init do |cloud_init|
-        cloud_init.content_type = "text/cloud-config"
-        
-        # Build cloud-config with network setup
-        cloud_config = {
-          "hostname" => name,
-          "write_files" => [
-            {
-              "path" => "/etc/systemd/network/10-enp0s9.network",
-              "content" => <<~NETWORK.chomp,
-                [Match]
-                Name=enp0s9
+      # Replace Vagrant NAT default route with router.server.acme.
+      # 10.0.2.0/24 stays reachable as a directly-connected route on enp0s8 — Vagrant SSH unaffected.
+      node.vm.provision "shell", name: "routing", run: "always", inline: <<~SHELL
+        ip route del default via 10.0.2.2 2>/dev/null || true
+        ip route add default via 10.0.50.1 dev enp0s9 2>/dev/null || true
+      SHELL
 
-                [Network]
-                DHCP=no
-                Address=#{opts[:ip]}/24
-                Gateway=10.0.50.1
-                DNS=10.0.50.10
-                RouteMetric=10
-
-                [Route]
-                Gateway=10.0.50.1
-                Metric=10
-              NETWORK
-              "permissions" => "0644"
-            },
-            {
-              "path" => "/etc/systemd/network/20-enp0s8.network",
-              "content" => <<~NETWORK.chomp,
-                [Match]
-                Name=enp0s8
-
-                [Network]
-                DHCP=yes
-                RouteMetric=200
-
-                [DHCP]
-                UseRoutes=yes
-                UseDNS=no
-
-                [DHCPv4]
-                RouteMetric=200
-              NETWORK
-              "permissions" => "0644"
-            }
-          ],
-          "runcmd" => [
-            "systemctl enable systemd-networkd",
-            "systemctl restart systemd-networkd"
-          ]
-        }
-
-        # Merge per-VM packages if specified
-        if opts[:cloud_init]
-          require 'yaml'
-          vm_config = YAML.load(opts[:cloud_init])
-          cloud_config.merge!(vm_config)
+      if opts[:cloud_init]
+        node.vm.cloud_init do |cloud_init|
+          cloud_init.content_type = "text/cloud-config"
+          cloud_init.inline = opts[:cloud_init]
         end
-
-        cloud_init.inline = cloud_config.to_yaml
       end
 
       node.vm.provider :virtualbox do |vb|
