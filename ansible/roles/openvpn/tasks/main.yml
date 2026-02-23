@@ -22,10 +22,11 @@
     mode: "0644"
   notify: restart openvpn
 
-- name: Enable openvpn-server@{{ openvpn_server_name }}
+- name: Enable and start openvpn-server@{{ openvpn_server_name }}
   ansible.builtin.systemd:
     name: openvpn-server@{{ openvpn_server_name }}
     enabled: true
+    state: started
 
 - name: Enable IP forwarding
   ansible.builtin.sysctl:
