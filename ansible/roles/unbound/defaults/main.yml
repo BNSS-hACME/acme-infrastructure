@@ -12,10 +12,6 @@ unbound_access_control:
     action: allow
   - network: 10.0.0.0/8
     action: allow
-  - network: 172.16.0.0/12
-    action: allow
-  - network: 192.168.0.0/16
-    action: allow
   - network: 0.0.0.0/0
     action: refuse
 
