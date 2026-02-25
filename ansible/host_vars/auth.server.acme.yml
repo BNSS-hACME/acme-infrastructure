@@ -1,5 +1,4 @@
 ---
-ansible_host: 10.0.50.13
 
 firewall:
   open_ports:
