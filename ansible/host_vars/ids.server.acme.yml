@@ -1,0 +1,5 @@
+snort_interface: eth0
+snort_home_net: 10.0.50.0/24
+snort_external_net: any
+snort_local_rules:
+  - 'alert icmp any any -> $HOME_NET any (msg:"ICMP to HOME_NET detected"; sid:1000001; rev:1;)'

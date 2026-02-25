@@ -1,0 +1,60 @@
+---
+- name: Install Snort IDS
+  ansible.builtin.apt:
+    name:
+      - snort
+    state: present
+    update_cache: true
+
+- name: Set Snort network interface
+  ansible.builtin.lineinfile:
+    path: /etc/default/snort
+    regexp: '^INTERFACE='
+    line: "INTERFACE={{ snort_interface }}"
+  notify: Restart snort
+
+- name: Ensure Snort service starts on boot
+  ansible.builtin.lineinfile:
+    path: /etc/default/snort
+    regexp: '^DEBIAN_SNORT_STARTUP='
+    line: 'DEBIAN_SNORT_STARTUP="yes"'
+  when: snort_enable_service
+  notify: Restart snort
+
+- name: Set Snort HOME_NET
+  ansible.builtin.lineinfile:
+    path: /etc/snort/snort.debian.conf
+    regexp: '^DEBIAN_SNORT_HOME_NET='
+    line: "DEBIAN_SNORT_HOME_NET={{ snort_home_net }}"
+  notify: Restart snort
+
+- name: Set Snort EXTERNAL_NET
+  ansible.builtin.lineinfile:
+    path: /etc/snort/snort.debian.conf
+    regexp: '^DEBIAN_SNORT_EXTERNAL_NET='
+    line: "DEBIAN_SNORT_EXTERNAL_NET={{ snort_external_net }}"
+  notify: Restart snort
+
+- name: Deploy local Snort rules
+  ansible.builtin.template:
+    src: local.rules.j2
+    dest: /etc/snort/rules/local.rules
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart snort
+
+- name: Ensure local rules are included in snort.conf
+  ansible.builtin.lineinfile:
+    path: /etc/snort/snort.conf
+    regexp: '^include \$RULE_PATH/local\.rules'
+    line: 'include $RULE_PATH/local.rules'
+    insertafter: '^var RULE_PATH'
+  notify: Restart snort
+
+- name: Enable and start Snort service
+  ansible.builtin.systemd:
+    name: snort
+    enabled: true
+    state: started
+  when: snort_enable_service

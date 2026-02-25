@@ -1,0 +1,7 @@
+---
+- name: Install and configure Snort IDS
+  hosts: nextcloud
+  become: yes
+  roles:
+    - common
+    - snort

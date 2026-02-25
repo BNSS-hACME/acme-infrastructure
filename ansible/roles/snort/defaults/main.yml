@@ -1,0 +1,6 @@
+---
+snort_interface: eth0
+snort_home_net: any
+snort_external_net: any
+snort_enable_service: true
+snort_local_rules: []

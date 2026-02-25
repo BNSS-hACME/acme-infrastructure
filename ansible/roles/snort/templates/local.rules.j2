@@ -1,0 +1,7 @@
+{% if snort_local_rules | length == 0 %}
+# No custom rules configured via Ansible.
+{% else %}
+{% for rule in snort_local_rules %}
+{{ rule }}
+{% endfor %}
+{% endif %}
