@@ -1,0 +1,153 @@
+---
+- name: Install dependencies
+  ansible.builtin.apt:
+    update_cache: true
+    name:
+      - apache2
+      - mariadb-server
+      - php
+      - php-mysqli
+      - php-gd
+      - php-xml
+      - git
+      - libapache2-mod-php
+    state: present
+
+- name: Apache running
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: true
+
+- name: Mariadb running
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Install python3-pymysql
+  ansible.builtin.apt:
+    name: python3-pymysql
+    state: present
+
+- name: Check if dvwa database exists
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -N -e
+      "SHOW DATABASES LIKE '{{ dvwa_db_database }}';"
+  register: dvwa_db_exists
+  changed_when: false
+  failed_when: false
+
+- name: Create dvwa database when missing
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -e
+      "CREATE DATABASE IF NOT EXISTS `{{ dvwa_db_database }}`;"
+  when: dvwa_db_exists.stdout == ''
+  changed_when: true
+
+- name: Check if dvwa database user exists
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -N -e
+      "SELECT User FROM mysql.user
+      WHERE User='{{ dvwa_db_user }}' AND Host='127.0.0.1';"
+  register: dvwa_db_user_exists
+  changed_when: false
+  failed_when: false
+
+- name: Create dvwa database user and grant privileges when missing
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -e
+      "CREATE USER IF NOT EXISTS '{{ dvwa_db_user }}'@'127.0.0.1'
+      IDENTIFIED BY '{{ dvwa_db_password }}';"
+  when: dvwa_db_user_exists.stdout == ''
+  changed_when: true
+
+- name: Grant privileges to dvwa database user
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -e
+      "GRANT ALL PRIVILEGES ON `{{ dvwa_db_database }}`.*
+      TO '{{ dvwa_db_user }}'@'127.0.0.1'; FLUSH PRIVILEGES;"
+  when: dvwa_db_user_exists.stdout == ''
+  changed_when: true
+
+- name: Ensure Git global `safe.directory` contains DVWA path
+  ansible.builtin.blockinfile:
+    dest: /root/.gitconfig
+    block: |
+      [safe]
+        directory = /var/www/html/dvwa
+    create: true
+    owner: root
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - safe.directory for DVWA"
+  become: true
+
+- name: Check if DVWA repo already exists
+  ansible.builtin.stat:
+    path: /var/www/html/dvwa/.git
+  register: dvwa_repo
+
+- name: Clone dvwa
+  ansible.builtin.git:
+    repo: https://github.com/digininja/DVWA.git
+    dest: /var/www/html/dvwa
+    version: master
+    update: true
+  when: not dvwa_repo.stat.exists
+
+- name: Deploy DVWA config
+  ansible.builtin.template:
+    src: config.inc.php.j2
+    dest: /var/www/html/dvwa/config/config.inc.php
+    owner: www-data
+    group: www-data
+    mode: "0644"
+
+- name: Fix permissions
+  ansible.builtin.file:
+    path: /var/www/html/dvwa
+    owner: www-data
+    group: www-data
+    recurse: true
+
+- name: Enable Apache rewrite module
+  ansible.builtin.command: a2enmod rewrite
+  args:
+    creates: /etc/apache2/mods-enabled/rewrite.load
+  register: dvwa_enable_rewrite_module
+  changed_when: dvwa_enable_rewrite_module.rc == 0
+
+# --- LOGGING SETUP ---
+- name: Deploy DVWA apache site config
+  ansible.builtin.template:
+    src: dvwa.conf.j2
+    dest: /etc/apache2/sites-available/dvwa.conf
+    mode: "0644"
+  register: dvwa_site_conf
+
+- name: Disable default apache site
+  ansible.builtin.command: a2dissite 000-default.conf
+  ignore_errors: true
+  register: dvwa_disable_default_site
+  changed_when: dvwa_disable_default_site.rc == 0
+
+- name: Enable DVWA site
+  ansible.builtin.command: a2ensite dvwa.conf
+  args:
+    creates: /etc/apache2/sites-enabled/dvwa.conf
+  register: dvwa_enable_dvwa_site
+  changed_when: dvwa_enable_dvwa_site.rc == 0
+
+- name: Restart Apache
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+  when: dvwa_enable_rewrite_module is changed
+    or dvwa_site_conf is changed
+    or dvwa_disable_default_site is changed
+    or dvwa_enable_dvwa_site is changed

@@ -1,0 +1,26 @@
+---
+- name: Create systemd-resolved drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure systemd-resolved to use acme dns server
+  ansible.builtin.copy:
+    content: |
+      [Resolve]
+      DNS=10.0.50.10
+    dest: /etc/systemd/resolved.conf.d/acme-dns.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart systemd-resolved
+
+- name: Ensure /etc/resolv.conf points to systemd-resolved stub
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
