@@ -30,8 +30,14 @@ MACHINES = {
     cpus: 2,
     cloud_init: <<~YAML,
       package_update: true
-      packages:
-        - nginx
+    YAML
+  },
+  "auth.server.acme" => {
+    ip: "10.0.50.13",
+    memory: 4096,
+    cpus: 2,
+    cloud_init: <<~YAML,
+      package_update: true
     YAML
   },
   "dvwa.server.acme" => {
