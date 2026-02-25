@@ -1,4 +1,4 @@
 ---
 firewall:
-  ports: 
+  ports:
     - 80
