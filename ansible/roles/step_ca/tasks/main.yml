@@ -1,30 +1,46 @@
 ---
-- name: Install curl
+- name: Install required APT packages
   apt:
-    name: curl
+    name:
+      - curl
+      - gpg
+      - ca-certificates
     state: present
     update_cache: yes
 
-- name: Install step-cli and step-ca
-  shell: |
-    curl -fsSL https://dl.smallstep.com/gh-release/cli/docs-cli-install/latest/install.sh | bash
-  args:
-    creates: /usr/bin/step
-
-- name: Create stepca system user
-  user:
-    name: stepca
-    system: yes
-    home: /etc/step-ca
-    shell: /usr/sbin/nologin
-
-- name: Ensure step-ca directory exists
+- name: Ensure apt keyrings directory exists
   file:
-    path: /etc/step-ca
+    path: /etc/apt/keyrings
     state: directory
-    owner: stepca
-    group: stepca
-    mode: '0750'
+    mode: '0755'
+
+- name: Download Smallstep repository signing key
+  get_url:
+    url: https://packages.smallstep.com/keys/apt/repo-signing-key.gpg
+    dest: /etc/apt/keyrings/smallstep.asc
+    mode: '0644'
+
+- name: Add Smallstep apt source (deb822 format)
+  copy:
+    dest: /etc/apt/sources.list.d/smallstep.sources
+    mode: '0644'
+    content: |
+      Types: deb
+      URIs: https://packages.smallstep.com/stable/debian
+      Suites: debs
+      Components: main
+      Signed-By: /etc/apt/keyrings/smallstep.asc
+
+- name: Update apt cache after adding Smallstep repo
+  apt:
+    update_cache: yes
+
+- name: Install step-cli and step-ca
+  apt:
+    name:
+      - step-cli
+      - step-ca
+    state: present
 
 - name: Install password file
   copy:
@@ -55,12 +71,6 @@
     recurse: yes
     owner: stepca
     group: stepca
-
-- name: Install systemd service file
-  copy:
-    src: step-ca.service
-    dest: /etc/systemd/system/step-ca.service
-    mode: '0644'
 
 - name: Reload systemd
   command: systemctl daemon-reload
