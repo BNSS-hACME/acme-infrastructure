@@ -4,7 +4,6 @@
     name:
       - ca-certificates
       - curl
-      - gnupg
     state: present
     update_cache: true
 
@@ -18,18 +17,21 @@
   ansible.builtin.get_url:
     url: https://download.docker.com/linux/debian/gpg
     dest: /etc/apt/keyrings/docker.asc
-    mode: "0644"
+    mode: "a+r"
 
 - name: 1.4. Add Docker repository to APT sources
-  ansible.builtin.apt_repository:
-    # Note: We hardcode 'bookworm' (Debian 12) here because Docker's official
-    # repository often doesn't have a 'trixie' (Debian 13) release channel yet.
-    # The bookworm packages work perfectly on trixie.
-    repo: >-
-      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
-      https://download.docker.com/linux/debian bookworm stable
-    state: present
-    filename: docker
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/docker.sources
+    mode: "0644"
+    content: |
+      Types: deb
+      URIs: https://download.docker.com/linux/debian
+      Suites: {{ ansible_distribution_release }}
+      Components: stable
+      Signed-By: /etc/apt/keyrings/docker.asc
+
+- name: 1.4b. Update APT cache after adding Docker repo
+  ansible.builtin.apt:
     update_cache: true
 
 - name: 1.5. Install Docker Engine and Compose Plugin
