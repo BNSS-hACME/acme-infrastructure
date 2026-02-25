@@ -25,7 +25,8 @@
     # Note: We hardcode 'bookworm' (Debian 12) here because Docker's official
     # repository often doesn't have a 'trixie' (Debian 13) release channel yet.
     # The bookworm packages work perfectly on trixie.
-    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable"
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] \
+      https://download.docker.com/linux/debian bookworm stable"
     state: present
     filename: docker
     update_cache: true
