@@ -51,7 +51,8 @@
   ansible.builtin.command:
     cmd: >-
       mysql --socket=/var/run/mysqld/mysqld.sock -N -e
-      "SELECT User FROM mysql.user WHERE User='{{ dvwa_db_user }}' AND Host='127.0.0.1';"
+      "SELECT User FROM mysql.user
+      WHERE User='{{ dvwa_db_user }}' AND Host='127.0.0.1';"
   register: dvwa_db_user_exists
   changed_when: false
   failed_when: false
@@ -60,7 +61,8 @@
   ansible.builtin.command:
     cmd: >-
       mysql --socket=/var/run/mysqld/mysqld.sock -e
-      "CREATE USER IF NOT EXISTS '{{ dvwa_db_user }}'@'127.0.0.1' IDENTIFIED BY '{{ dvwa_db_password }}';"
+      "CREATE USER IF NOT EXISTS '{{ dvwa_db_user }}'@'127.0.0.1'
+      IDENTIFIED BY '{{ dvwa_db_password }}';"
   when: dvwa_db_user_exists.stdout == ''
   changed_when: true
 
@@ -68,7 +70,8 @@
   ansible.builtin.command:
     cmd: >-
       mysql --socket=/var/run/mysqld/mysqld.sock -e
-      "GRANT ALL PRIVILEGES ON `{{ dvwa_db_database }}`.* TO '{{ dvwa_db_user }}'@'127.0.0.1'; FLUSH PRIVILEGES;"
+      "GRANT ALL PRIVILEGES ON `{{ dvwa_db_database }}`.*
+      TO '{{ dvwa_db_user }}'@'127.0.0.1'; FLUSH PRIVILEGES;"
   when: dvwa_db_user_exists.stdout == ''
   changed_when: true
 
