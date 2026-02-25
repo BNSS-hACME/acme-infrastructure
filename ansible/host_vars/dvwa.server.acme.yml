@@ -1,0 +1,4 @@
+---
+firewall:
+  ports:
+    - 80

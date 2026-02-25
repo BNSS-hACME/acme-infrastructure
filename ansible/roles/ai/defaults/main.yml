@@ -1,6 +1,9 @@
-ollama_host: "127.0.0.1"
-ollama_port: 11434
+---
+ai_ollama_host: "127.0.0.1"
+ai_ollama_port: 11434
 
-ollama_models:
-  - qwen3:0.6b
-  
+# Optional override for client-side access checks / pull commands.
+# Set this when ai_ollama_host is a non-routable bind address (e.g. 0.0.0.0).
+ai_ollama_client_host: "{{ ai_ollama_host }}"
+
+ai_ollama_models: [qwen3:0.6b]

@@ -2,21 +2,27 @@
   become: true
   ansible.builtin.apt:
     name:
-      - curl
       - ca-certificates
     state: present
     update_cache: true
 
+- name: Download Ollama installer
+  become: true
+  ansible.builtin.get_url:
+    url: https://ollama.com/install.sh
+    dest: /tmp/ollama-install.sh
+    mode: "0755"
+
 - name: Install Ollama
   become: true
-  ansible.builtin.shell: curl -sSL https://ollama.com/install.sh | sh
+  ansible.builtin.command: /bin/sh /tmp/ollama-install.sh
   args:
     creates: /usr/local/bin/ollama
 
-# Empfehlung: Host/Port über Environment setzen (statt CLI-Flags),
-# weil ich die Flags nicht verifizieren kann.
 - name: Configure Ollama systemd service
   become: true
+  vars:
+    ai_ollama_bind_address: "{{ (ai_ollama_host | default('127.0.0.1')) ~ ':' ~ (ai_ollama_port | default(11434)) }}"
   ansible.builtin.copy:
     dest: /etc/systemd/system/ollama.service
     mode: "0644"
@@ -28,7 +34,7 @@
 
       [Service]
       Type=simple
-      Environment=OLLAMA_HOST={{ ollama_bind_host | default('127.0.0.1') }}:{{ ollama_port | default(11434) }}
+      Environment=OLLAMA_HOST={{ ai_ollama_bind_address }}
       ExecStart=/usr/local/bin/ollama serve
       Restart=always
       RestartSec=2
@@ -36,16 +42,8 @@
 
       [Install]
       WantedBy=multi-user.target
-  register: ollama_unit
+  notify: Restart Ollama
 
-- name: Reload systemd and restart Ollama when unit file changes
-  become: true
-  ansible.builtin.systemd:
-    name: ollama
-    state: restarted
-    enabled: true
-    daemon_reload: true
-  when: ollama_unit is changed
 - name: Ensure Ollama service is enabled and started
   become: true
   ansible.builtin.systemd:
@@ -54,19 +52,32 @@
     enabled: true
 
 - name: Wait for Ollama API port
+  vars:
+    ai_ollama_api_host: >-
+      {{ ai_ollama_client_host |
+      default(ai_ollama_host | default('127.0.0.1')) }}
   ansible.builtin.wait_for:
-    host: "{{ ollama_check_host | default('127.0.0.1') }}"
-    port: "{{ ollama_port | default(11434) }}"
+    host: "{{ ai_ollama_api_host }}"
+    port: "{{ ai_ollama_port | default(11434) }}"
     timeout: 60
 
 - name: Pull models
   become: true
-  ansible.builtin.command: /usr/local/bin/ollama pull {{ item }}
-  loop: "{{ ollama_models }}"
+  vars:
+    ai_ollama_api_endpoint: "{{ (ai_ollama_client_host | default(ai_ollama_host | default('127.0.0.1'))) ~ ':' ~ (ai_ollama_port | default(11434)) }}"
+  ansible.builtin.command: ollama pull {{ item }}
+  loop: "{{ ai_ollama_models }}"
   environment:
-    # manche Setups brauchen "http://", manche nur "host:port" – kann ich nicht verifizieren
-    OLLAMA_HOST: "{{ ollama_client_host | default('127.0.0.1') }}:{{ ollama_port | default(11434) }}"
-  register: pull_models_result
+    OLLAMA_HOST: "{{ ai_ollama_api_endpoint }}"
+  register: ai_pull_models_result
+  changed_when: false
   retries: 3
   delay: 5
-  until: pull_models_result is succeeded
+  until: ai_pull_models_result is succeeded
+
+- name: Ensure Ollama service is enabled and started
+  become: true
+  ansible.builtin.systemd:
+    name: ollama
+    state: started
+    enabled: true
