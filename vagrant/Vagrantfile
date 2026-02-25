@@ -30,8 +30,6 @@ MACHINES = {
     cpus: 2,
     cloud_init: <<~YAML,
       package_update: true
-      packages:
-        - nginx
     YAML
   },
   "auth.server.acme" => {
