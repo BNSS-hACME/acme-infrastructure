@@ -1,8 +1,21 @@
 ---
-- name: Install unbound
+- name: Ensure working DNS before package installation
+  ansible.builtin.copy:
+    content: |
+      # Temporary - will be replaced after Unbound is configured
+      nameserver 1.1.1.1
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install unbound and dependencies
   ansible.builtin.apt:
-    name: unbound
+    name:
+      - unbound
+      - dnsutils  # Dig
     state: present
+    update_cache: yes
 
 - name: Ensure systemd-resolved is stopped, disabled and masked
   ansible.builtin.systemd:
@@ -10,3 +23,30 @@
     state: stopped
     enabled: false
     masked: true
+
+- name: Deploy unbound configuration
+  ansible.builtin.template:
+    src: unbound.conf.j2
+    dest: /etc/unbound/unbound.conf.d/ansible.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: 'unbound-checkconf %s'
+  notify: restart unbound
+
+- name: Enable and start unbound service
+  ansible.builtin.systemd:
+    name: unbound
+    enabled: yes
+    state: started
+
+- name: Configure /etc/resolv.conf to use local unbound
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible
+      nameserver 127.0.0.1
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: unbound_set_local_resolver | default(true)
