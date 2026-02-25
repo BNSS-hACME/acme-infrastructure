@@ -32,7 +32,7 @@
     group: root
     mode: "0644"
     validate: "unbound-checkconf %s"
-  notify: restart unbound
+  notify: Restart unbound
 
 - name: Enable and start unbound service
   ansible.builtin.systemd:
