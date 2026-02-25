@@ -25,3 +25,10 @@ oauth2:
 openvpn:
   addr: "tcp://127.0.0.1:{{ openvpn_auth_oauth2_mgmt_port }}"
   password: "{{ vault_openvpn_mgmt_password }}"
+{% if openvpn_auth_oauth2_bypass_common_names | length > 0 %}
+  bypass:
+    common-names:
+{% for cn in openvpn_auth_oauth2_bypass_common_names %}
+      - "{{ cn }}"
+{% endfor %}
+{% endif %}

@@ -1,11 +1,39 @@
 ---
 openvpn_server_name: "server"
 
-# openvpn-auth-oauth2
+# VPN pool handed to connecting clients (design: 10.0.11.0/24)
+openvpn_vpn_subnet: "10.0.11.0"
+openvpn_vpn_netmask: "255.255.255.0"
+
+# CN used when requesting the server certificate from Step CA
+openvpn_server_cn: "vpn.server.acme"
+
+# ---- Step CA integration ----
+# Set stepca_host to the Ansible inventory hostname of the Step CA VM once
+# the step-ca role is in place.  Until then, cert-related tasks are skipped
+# and the CA bundle will contain only the NSS-VPKI RCA.
+# stepca_host: "ca.server.acme"
+stepca_url: "https://ca.server.acme:9000"
+stepca_fingerprint: "" # fill in after first `step ca bootstrap`
+stepca_root_cert_path: "/etc/step-ca/certs/root_ca.crt"
+stepca_provisioner: "acme"
+step_cli_version: "0.28.3"
+
+# ---- x-PKI / NSS-VPKI ----
+# Public RCA certificate from the KTH NSS-VPKI.  Fetched at provision time;
+# no secrets involved — this is a public trust anchor.
+openvpn_nss_vpki_rca_url: "https://raw.githubusercontent.com/mohammad-khodaei/nss-vpki/master/Certificates/rca_x509_cert.pem"
+
+# ---- openvpn-auth-oauth2 ----
 openvpn_auth_oauth2_version: "1.27.0"
 openvpn_auth_oauth2_http_listen: ":9090"
 openvpn_auth_oauth2_http_baseurl: "http://{{ ansible_facts.default_ipv4.address }}:9090"
-openvpn_auth_oauth2_issuer: "https://keycloak.example.com/realms/openvpn"
+openvpn_auth_oauth2_issuer: "https://keycloak.server.acme/realms/acme"
 openvpn_auth_oauth2_provider: "generic"
 openvpn_auth_oauth2_mgmt_port: 7505
 openvpn_auth_oauth2_auth_token_lifetime: 28800
+# Common names that skip the Keycloak OAuth2 step entirely.
+# Add pseudonym CNs here if you want travel users to get full privacy
+# (no Keycloak login during VPN connect).  Leave empty to always require
+# Keycloak — the pseudonym cert still authenticates the TLS channel.
+openvpn_auth_oauth2_bypass_common_names: []

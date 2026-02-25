@@ -83,14 +83,19 @@ dev tun
 # and use the peer-fingerprint option.
 # See openvpn-examples man page for a
 # configuration example.
-ca ca.crt
+ca ca-bundle.crt
 cert server.crt
 key server.key  # This file should be kept secret
+
+# Accept certs from Step CA (long-term) and NSS-VPKI PCA (pseudonyms).
+# Without 'optional', users without any cert cannot connect at all and the
+# Keycloak OAuth2 fallback (openvpn-auth-oauth2) never fires.
+verify-client-cert optional
 
 # Diffie hellman parameters.
 # Generate your own with:
 #   openssl dhparam -out dh4096.pem 4096
-dh dh4096.pem
+dh dh2048.pem
 
 # Allow to connect to really old OpenVPN versions
 # without AEAD support (OpenVPN 2.3.x or older)
@@ -112,7 +117,7 @@ topology subnet
 # Each client will be able to reach the server
 # on 10.8.0.1. Comment this line out if you are
 # ethernet bridging. See the man page for more info.
-server 10.8.0.0 255.255.255.0
+server {{ openvpn_vpn_subnet }} {{ openvpn_vpn_netmask }}
 
 # Maintain a record of client <-> virtual IP address
 # associations in this file.  If OpenVPN goes down or
@@ -255,7 +260,7 @@ keepalive 10 120
 # a copy of this key.
 # The second parameter should be '0'
 # on the server and '1' on the clients.
-;tls-auth ta.key 0 # This file is secret
+tls-crypt ta.key
 
 # The maximum number of concurrently connected
 # clients we want to allow.
@@ -266,8 +271,8 @@ keepalive 10 120
 #
 # You can uncomment this on non-Windows
 # systems after creating a dedicated user.
-;user openvpn
-;group openvpn
+user openvpn
+group openvpn
 
 # The persist options will try to avoid
 # accessing certain resources on restart
