@@ -59,7 +59,7 @@
 
 - name: Install password file
   ansible.builtin.copy:
-    content: "hacme123"
+    content: "{{ step_ca_password }}"
     dest: /etc/step-ca/password.txt
     owner: stepca
     group: stepca

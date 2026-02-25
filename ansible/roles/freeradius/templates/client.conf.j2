@@ -1,0 +1,7 @@
+{% for client in clients %}
+client {{ client.name }} {
+    ipaddr = {{ client.ipaddr }}
+    secret = {{ client.secret }}
+    require_message_authenticator = no
+}
+{% endfor %}

@@ -18,7 +18,7 @@
     state: directory
     owner: freerad
     group: freerad
-    mode: '0750'
+    mode: "0750"
 
 - name: Wait for Step CA to be reachable
   uri:
@@ -72,7 +72,7 @@
     remote_src: yes
     owner: freerad
     group: freerad
-    mode: '0640'
+    mode: "0640"
 
 - name: Fix ownership of RADIUS certificates
   file:
@@ -81,20 +81,11 @@
     group: freerad
     recurse: yes
 
-- name: Add router client definitions to clients.conf
-  blockinfile:
-    path: /etc/freeradius/3.0/clients.conf
-    marker: "# {mark} ANSIBLE MANAGED ROUTERS"
-    block: |
-      client london-router {
-          ipaddr = 10.10.0.1
-          secret = hacme123
-          require_message_authenticator = no
-      }
-
-      client stockholm-router {
-          ipaddr = 10.20.0.1
-          secret = hacme123
-          require_message_authenticator = no
-      }
+- name: Write freeradius client config
+  ansible.builtin.template:
+    src: client.conf.j2
+    dest: /etc/freeradius/3.0/clients.conf
+    owner: freerad
+    group: freerad
+    mode: "0640"
   notify: Restart FreeRADIUS
