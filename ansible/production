@@ -2,6 +2,7 @@ router.server.acme
 vpn.server.acme
 dns.server.acme
 cloud.server.acme
+dvwa.server.acme
 
 [router]
 router.server.acme
@@ -14,3 +15,7 @@ dns.server.acme
 
 [nextcloud]
 cloud.server.acme
+
+[dvwa]
+dvwa.server.acme
+

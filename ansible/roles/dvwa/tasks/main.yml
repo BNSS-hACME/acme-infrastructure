@@ -1,0 +1,121 @@
+- name: install dependencies
+  ansible.builtin.apt:
+    update_cache: yes
+    name:
+      - apache2
+      - mariadb-server
+      - php
+      - php-mysqli
+      - php-gd
+      - php-xml
+      - git
+      - libapache2-mod-php
+    state: present
+
+- name: apache running
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: true
+
+- name: mariadb running
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: install python3-pymysql
+  ansible.builtin.apt:
+    name: python3-pymysql
+    state: present
+
+- name: create dvwa database
+  community.mysql.mysql_db:
+    name: "{{ dvwa_db_database }}"
+    state: present
+    login_user: root
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: create dvwa database user
+  community.mysql.mysql_user:
+    name: "{{ dvwa_db_user }}"
+    password: "{{ dvwa_db_password }}"
+    priv: "{{ dvwa_db_database }}.*:ALL"
+    host: "127.0.0.1"
+    state: present
+    login_user: root
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    
+- name: Read root git safe.directory list (if any)
+  become: true
+  ansible.builtin.command: git config --global --get-all safe.directory
+  register: root_safe_dirs
+  changed_when: false
+  failed_when: false
+
+- name: Add DVWA as root safe.directory
+  become: true
+  ansible.builtin.command: git config --global --add safe.directory /var/www/html/dvwa
+  when: (root_safe_dirs.stdout | regex_search('(?m)^/var/www/html/dvwa$')) is none 
+
+- name: Check if DVWA repo already exists
+  ansible.builtin.stat:
+    path: /var/www/html/dvwa/.git
+  register: dvwa_repo
+
+- name: clone dvwa
+  ansible.builtin.git:
+    repo: https://github.com/digininja/DVWA.git
+    dest: /var/www/html/dvwa
+    version: master
+    update: yes
+  when: not dvwa_repo.stat.exists
+  
+- name: Deploy DVWA config
+  ansible.builtin.template:
+    src: config.inc.php.j2
+    dest: /var/www/html/dvwa/config/config.inc.php
+    owner: www-data
+    group: www-data
+    mode: "0644"
+
+- name: Fix permissions
+  ansible.builtin.file:
+    path: /var/www/html/dvwa
+    owner: www-data
+    group: www-data
+    recurse: yes
+
+- name: Enable Apache rewrite module
+  ansible.builtin.command: a2enmod rewrite
+  args:
+    creates: /etc/apache2/mods-enabled/rewrite.load
+  register: enable_rewrite_module
+
+# --- LOGGING SETUP ---
+- name: Deploy DVWA apache site config
+  ansible.builtin.template:
+    src: dvwa.conf.j2
+    dest: /etc/apache2/sites-available/dvwa.conf
+    mode: "0644"
+  register: dvwa_site_conf
+
+- name: Disable default apache site
+  ansible.builtin.command: a2dissite 000-default.conf
+  ignore_errors: true
+  register: disable_default_site
+
+- name: Enable DVWA site
+  ansible.builtin.command: a2ensite dvwa.conf
+  args:
+    creates: /etc/apache2/sites-enabled/dvwa.conf
+  register: enable_dvwa_site
+
+- name: Restart Apache
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+  when: enable_rewrite_module is changed
+        or dvwa_site_conf is changed
+        or disable_default_site is changed
+        or enable_dvwa_site is changed
