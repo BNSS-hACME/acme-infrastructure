@@ -90,6 +90,7 @@
     mode: "0644"
 
 - name: Start Keycloak with Docker Compose
-  ansible.builtin.command:
-    cmd: docker compose -f /opt/keycloak/docker-compose.yml up -d
-  changed_when: false
+  community.docker.docker_compose:
+    project_src: /opt/keycloak
+    files:
+      - docker-compose.yml
