@@ -65,3 +65,21 @@
     owner: freerad
     group: freerad
     recurse: yes
+
+- name: Add router client definitions to clients.conf
+  blockinfile:
+    path: /etc/freeradius/3.0/clients.conf
+    marker: "# {mark} ANSIBLE MANAGED ROUTERS"
+    block: |
+      client london-router {
+          ipaddr = 10.10.0.1
+          secret = hacme123
+          require_message_authenticator = no
+      }
+
+      client stockholm-router {
+          ipaddr = 10.20.0.1
+          secret = hacme123
+          require_message_authenticator = no
+      }
+  notify: Restart FreeRADIUS
