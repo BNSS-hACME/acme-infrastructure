@@ -1,6 +1,6 @@
 ---
 
 firewall:
-  open_ports:
+  ports:
     - 80
     - 443
