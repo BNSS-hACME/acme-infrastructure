@@ -28,7 +28,7 @@
 
       [Service]
       Type=simple
-      Environment=OLLAMA_HOST={{ ollama_bind_host | default('127.0.0.1') }}:{{ ollama_port | default(11434) }}
+      Environment=OLLAMA_HOST={{ ollama_host | default('127.0.0.1') }}:{{ ollama_port | default(11434) }}
       ExecStart=/usr/local/bin/ollama serve
       Restart=always
       RestartSec=2
@@ -55,7 +55,7 @@
 
 - name: Wait for Ollama API port
   ansible.builtin.wait_for:
-    host: "{{ ollama_check_host | default('127.0.0.1') }}"
+    host: "{{ ollama_client_host | default(ollama_host | default('127.0.0.1')) }}"
     port: "{{ ollama_port | default(11434) }}"
     timeout: 60
 
@@ -65,7 +65,7 @@
   loop: "{{ ollama_models }}"
   environment:
     # manche Setups brauchen "http://", manche nur "host:port" – kann ich nicht verifizieren
-    OLLAMA_HOST: "{{ ollama_client_host | default('127.0.0.1') }}:{{ ollama_port | default(11434) }}"
+    OLLAMA_HOST: "{{ ollama_client_host | default(ollama_host | default('127.0.0.1')) }}:{{ ollama_port | default(11434) }}"
   register: pull_models_result
   retries: 3
   delay: 5

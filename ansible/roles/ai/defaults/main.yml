@@ -1,0 +1,8 @@
+ollama_host: "127.0.0.1"
+ollama_port: 11434
+
+# Optional override for client-side access checks / pull commands.
+# Set this when ollama_host is a non-routable bind address (e.g. 0.0.0.0).
+ollama_client_host: "{{ ollama_host }}"
+
+ollama_models: []
