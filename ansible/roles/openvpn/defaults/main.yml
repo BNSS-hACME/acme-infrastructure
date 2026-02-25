@@ -28,7 +28,7 @@ openvpn_nss_vpki_rca_url: "https://raw.githubusercontent.com/mohammad-khodaei/ns
 openvpn_auth_oauth2_version: "1.27.0"
 openvpn_auth_oauth2_http_listen: ":9090"
 openvpn_auth_oauth2_http_baseurl: "http://{{ ansible_facts.default_ipv4.address }}:9090"
-openvpn_auth_oauth2_issuer: "https://keycloak.server.acme/realms/acme"
+openvpn_auth_oauth2_issuer: "https://auth.server.acme/realms/acme"
 openvpn_auth_oauth2_provider: "generic"
 openvpn_auth_oauth2_mgmt_port: 7505
 openvpn_auth_oauth2_auth_token_lifetime: 28800
