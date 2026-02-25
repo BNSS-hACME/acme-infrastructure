@@ -20,11 +20,26 @@
     group: freerad
     mode: '0750'
 
+- name: Wait for Step CA to be reachable
+  uri:
+    url: https://ca.server.acme:9000/health
+    method: GET
+    validate_certs: no
+  register: ca_health
+  retries: 10
+  delay: 3
+  until: ca_health.status == 200
+
+- name: Get CA root fingerprint
+  command: step certificate fingerprint /etc/step-ca/certs/root_ca.crt
+  register: ca_fingerprint
+  changed_when: false
+
 - name: Bootstrap step CLI for root
-  shell: |
-    step ca bootstrap \
-      --ca-url https://ca.server.acme:9000 \
-      --fingerprint 6cf5a4cd302740b0490091b920406bdade3f0520dcbd629ace536034b7e8800e
+  command: >
+    step ca bootstrap
+    --ca-url https://ca.server.acme:9000
+    --fingerprint {{ ca_fingerprint.stdout }}
   args:
     creates: /root/.step/config/defaults.json
 
