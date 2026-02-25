@@ -2,6 +2,7 @@ router.server.acme
 vpn.server.acme
 dns.server.acme
 cloud.server.acme
+ca.server.acme
 
 [router]
 router.server.acme
