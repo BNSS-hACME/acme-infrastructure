@@ -25,7 +25,9 @@
     # Note: We hardcode 'bookworm' (Debian 12) here because Docker's official
     # repository often doesn't have a 'trixie' (Debian 13) release channel yet.
     # The bookworm packages work perfectly on trixie.
-    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable"
+    repo: >-
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/debian bookworm stable
     state: present
     filename: docker
     update_cache: true
@@ -99,10 +101,14 @@
   ansible.builtin.shell: |
     docker exec -u 33 nextcloud-app php occ maintenance:install \
       --database "mysql" --database-name "nextcloud" \
-      --database-user "nextcloud" --database-pass "{{ vault_nextcloud_db_password }}" \
+      --database-user "nextcloud" \
+      --database-pass "{{ vault_nextcloud_db_password }}" \
       --database-host "db" \
-      --admin-user "admin" --admin-pass "{{ vault_nextcloud_admin_password }}"
-  when: not ((nextcloud_status.stdout | default('{}') | from_json).installed | default(false))
+      --admin-user "admin" \
+      --admin-pass "{{ vault_nextcloud_admin_password }}"
+  when: >-
+    not ((nextcloud_status.stdout | default('{}') | from_json).installed |
+    default(false))
   register: nextcloud_occ_install
   until: nextcloud_occ_install.rc == 0
   retries: 10
@@ -120,17 +126,18 @@
 
 - name: 10. Hardcode ACME Trusted Domains and Setup Network Security
   ansible.builtin.shell: |
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 0 --value="localhost"
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_domains 1 --value="cloud.server.acme"
+    OCC="docker exec -u 33 nextcloud-app php occ"
+    $OCC config:system:set trusted_domains 0 --value="localhost"
+    $OCC config:system:set trusted_domains 1 --value="cloud.server.acme"
 
     # Configure trusted proxies for gateway passing
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_proxies 0 --value="10.0.50.0/24"
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_proxies 1 --value="10.0.10.0/24"
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_proxies 2 --value="10.0.20.0/24"
-    docker exec -u 33 nextcloud-app php occ config:system:set trusted_proxies 3 --value="10.0.11.0/24"
+    $OCC config:system:set trusted_proxies 0 --value="10.0.50.0/24"
+    $OCC config:system:set trusted_proxies 1 --value="10.0.10.0/24"
+    $OCC config:system:set trusted_proxies 2 --value="10.0.20.0/24"
+    $OCC config:system:set trusted_proxies 3 --value="10.0.11.0/24"
 
-    docker exec -u 33 nextcloud-app php occ config:system:set overwriteprotocol --value="https"
-    docker exec -u 33 nextcloud-app php occ config:system:delete overwritehost
+    $OCC config:system:set overwriteprotocol --value="https"
+    $OCC config:system:delete overwritehost
   failed_when: false
   changed_when: false
 
@@ -146,23 +153,32 @@
 
 - name: 12. Final OIDC Configuration
   ansible.builtin.shell: |
-    docker exec -u 33 nextcloud-app php occ config:system:set allow_local_remote_servers --value=true --type=boolean
-    docker exec -u 33 nextcloud-app php occ user_oidc:provider "Keycloak" \
+    OCC="docker exec -u 33 nextcloud-app php occ"
+    URI="https://auth.server.acme:8443/realms/acme-realm/.well-known/openid-configuration"
+
+    $OCC config:system:set allow_local_remote_servers \
+      --value=true --type=boolean
+    $OCC user_oidc:provider "Keycloak" \
       --clientid "nextcloud-client" \
       --clientsecret "{{ vault_nextcloud_oidc_secret }}" \
-      --discoveryuri "https://auth.server.acme:8443/realms/acme-realm/.well-known/openid-configuration" \
+      --discoveryuri "$URI" \
       --scope "openid profile email"
-    docker exec -u 33 nextcloud-app php occ config:system:set oidc_login_auto_redirect --value=true --type=boolean
-    docker exec -u 33 nextcloud-app php occ config:app:set user_oidc allow_multiple_user_backends --value=0
-    docker exec -u 33 nextcloud-app php occ config:app:set user_oidc soft_auto_provision --value=1
-    docker exec -u 33 nextcloud-app php occ config:app:set bruteforcesettings whitelist \
-      --value='["10.0.50.0/24", "10.0.10.0/24", "10.0.20.0/24", "10.0.11.0/24"]'
+
+    $OCC config:system:set oidc_login_auto_redirect \
+      --value=true --type=boolean
+    $OCC config:app:set user_oidc allow_multiple_user_backends --value=0
+    $OCC config:app:set user_oidc soft_auto_provision --value=1
+
+    WL='["10.0.50.0/24", "10.0.10.0/24", "10.0.20.0/24", "10.0.11.0/24"]'
+    $OCC config:app:set bruteforcesettings whitelist --value="$WL"
   changed_when: false
 
 - name: 13. Trust Step-CA Root Certificate (When available)
   ansible.builtin.shell: |
-    # The Step-CA root certificate will be injected via Docker Volume /usr/local/share/ca-certificates/
-    # This command tells the Nextcloud OS to trust any newly mounted CA certificates.
+    # The Step-CA root certificate will be injected via Docker Volume
+    # /usr/local/share/ca-certificates/
+    # This command tells the Nextcloud OS to trust any newly mounted
+    # CA certificates.
     docker exec -u 0 nextcloud-app update-ca-certificates
   changed_when: false
 
