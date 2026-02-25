@@ -1,7 +1,7 @@
 ---
 - name: Install and configure FreeRADIUS
   hosts: ca.server.acme
-  become: yes
+  become: true
 
   roles:
     - freeradius
