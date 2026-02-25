@@ -1,6 +1,6 @@
 ---
 
 firewall:
-  open_ports:
+  ports:
     - 8443
     # - 9000
