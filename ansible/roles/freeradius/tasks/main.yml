@@ -12,3 +12,56 @@
     name: freeradius
     state: started
     enabled: yes
+- name: Ensure FreeRADIUS cert directory exists
+  file:
+    path: /etc/freeradius/certs
+    state: directory
+    owner: freerad
+    group: freerad
+    mode: '0750'
+
+- name: Bootstrap step CLI for root
+  shell: |
+    step ca bootstrap \
+      --ca-url https://ca.server.acme:9000 \
+      --fingerprint 6cf5a4cd302740b0490091b920406bdade3f0520dcbd629ace536034b7e8800e
+  args:
+    creates: /root/.step/config/defaults.json
+
+- name: Remove old RADIUS certificate if present
+  file:
+    path: /etc/freeradius/certs/radius.crt
+    state: absent
+
+- name: Remove old RADIUS key if present
+  file:
+    path: /etc/freeradius/certs/radius.key
+    state: absent
+
+- name: Generate RADIUS certificate
+  shell: |
+    step ca certificate radius.server.acme \
+      /etc/freeradius/certs/radius.crt \
+      /etc/freeradius/certs/radius.key \
+      --ca-url https://ca.server.acme:9000 \
+      --root /etc/step-ca/certs/root_ca.crt \
+      --password-file /etc/step-ca/password.txt
+  args:
+    creates: /etc/freeradius/certs/radius.crt
+  notify: Restart FreeRADIUS
+
+- name: Copy Root CA certificate
+  copy:
+    src: /etc/step-ca/certs/root_ca.crt
+    dest: /etc/freeradius/certs/root_ca.crt
+    remote_src: yes
+    owner: freerad
+    group: freerad
+    mode: '0640'
+
+- name: Fix ownership of RADIUS certificates
+  file:
+    path: /etc/freeradius/certs
+    owner: freerad
+    group: freerad
+    recurse: yes
