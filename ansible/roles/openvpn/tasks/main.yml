@@ -9,13 +9,13 @@
   ansible.builtin.command:
     cmd: openvpn --genkey tls-crypt /etc/openvpn/server/ta.key
     creates: /etc/openvpn/server/ta.key
-  notify: restart openvpn
+  notify: Restart openvpn
 
 - name: Generate DH parameters (2048-bit)
   ansible.builtin.command:
     cmd: openssl dhparam -out /etc/openvpn/server/dh2048.pem 2048
     creates: /etc/openvpn/server/dh2048.pem
-  notify: restart openvpn
+  notify: Restart openvpn
 
 # ---- CA bundle: NSS-VPKI RCA (always) + Step CA root (when available) ----
 # The bundle is assembled from per-cert files dropped into ca-parts/.
@@ -34,7 +34,7 @@
     url: "{{ openvpn_nss_vpki_rca_url }}"
     dest: /etc/openvpn/server/ca-parts/01-nss-vpki-rca.crt
     mode: "0644"
-  notify: restart openvpn
+  notify: Restart openvpn
 
 # Step CA tasks are gated on stepca_host being defined.
 # The step-ca role is expected to set that variable and place the root cert
@@ -42,7 +42,7 @@
 
 - name: Fetch Step CA root certificate
   ansible.builtin.slurp:
-    src: "{{ stepca_root_cert_path }}"
+    src: "{{ openvpn_stepca_root_cert_path }}"
   delegate_to: "{{ stepca_host }}"
   register: _stepca_root_cert
   when: stepca_host is defined
@@ -55,20 +55,20 @@
   when:
     - stepca_host is defined
     - _stepca_root_cert.content is defined
-  notify: restart openvpn
+  notify: Restart openvpn
 
 - name: Assemble CA bundle from parts
   ansible.builtin.assemble:
     src: /etc/openvpn/server/ca-parts
     dest: /etc/openvpn/server/ca-bundle.crt
     mode: "0644"
-  notify: restart openvpn
+  notify: Restart openvpn
 
 # ---- Server certificate from Step CA ----
 
 - name: Install step CLI
   ansible.builtin.apt:
-    deb: "https://dl.smallstep.com/gh-release/cli/gh-release-header/v{{ step_cli_version }}/step-cli_{{ step_cli_version }}_{{ _oauth2_deb_arch }}.deb"
+    deb: "https://dl.smallstep.com/gh-release/cli/gh-release-header/v{{ openvpn_step_cli_version }}/step-cli_{{ openvpn_step_cli_version }}_{{ _oauth2_deb_arch }}.deb"
     state: present
   when: stepca_host is defined
 
@@ -76,13 +76,13 @@
   ansible.builtin.command:
     cmd: >
       step ca bootstrap
-      --ca-url {{ stepca_url }}
-      --fingerprint {{ stepca_fingerprint }}
+      --ca-url {{ openvpn_stepca_url }}
+      --fingerprint {{ openvpn_stepca_fingerprint }}
       --install
     creates: /root/.step/config/defaults.json
   when:
     - stepca_host is defined
-    - stepca_fingerprint | length > 0
+    - openvpn_stepca_fingerprint | length > 0
 
 - name: Deploy Step CA provisioner password file
   ansible.builtin.copy:
@@ -99,14 +99,14 @@
       step ca certificate {{ openvpn_server_cn }}
       /etc/openvpn/server/server.crt
       /etc/openvpn/server/server.key
-      --provisioner {{ stepca_provisioner }}
+      --provisioner {{ openvpn_stepca_provisioner }}
       --provisioner-password-file /etc/openvpn/server/provisioner-password.txt
       --not-after 2160h
     creates: /etc/openvpn/server/server.crt
   when:
     - stepca_host is defined
-    - stepca_fingerprint | length > 0
-  notify: restart openvpn
+    - openvpn_stepca_fingerprint | length > 0
+  notify: Restart openvpn
 
 # ---- OpenVPN server ----
 
@@ -122,14 +122,14 @@
     owner: root
     group: root
     mode: "0600"
-  notify: restart openvpn
+  notify: Restart openvpn
 
 - name: Configure OpenVPN
   ansible.builtin.template:
     src: server.conf.j2
     dest: /etc/openvpn/server/server.conf
     mode: "0644"
-  notify: restart openvpn
+  notify: Restart openvpn
 
 - name: Enable and start openvpn-server@{{ openvpn_server_name }}
   ansible.builtin.systemd:
@@ -137,12 +137,12 @@
     enabled: true
     state: started
 
-- name: Enable IP forwarding
-  ansible.builtin.sysctl:
-    name: net.ipv4.ip_forward
-    value: "1"
-    state: present
-    sysctl_file: /etc/sysctl.d/99-openvpn.conf
+#- name: Enable IP forwarding
+#  ansible.builtin.sysctl:
+#    name: net.ipv4.ip_forward
+#    value: "1"
+#    state: present
+#    sysctl_file: /etc/sysctl.d/99-openvpn.conf
 
 # ---- openvpn-auth-oauth2 ----
 
@@ -158,7 +158,7 @@
     owner: root
     group: openvpn-auth-oauth2
     mode: "0640"
-  notify: restart openvpn-auth-oauth2
+  notify: Restart openvpn-auth-oauth2
 
 - name: Enable and start openvpn-auth-oauth2
   ansible.builtin.systemd:

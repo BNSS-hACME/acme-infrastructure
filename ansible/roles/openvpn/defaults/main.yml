@@ -13,11 +13,11 @@ openvpn_server_cn: "vpn.server.acme"
 # the step-ca role is in place.  Until then, cert-related tasks are skipped
 # and the CA bundle will contain only the NSS-VPKI RCA.
 # stepca_host: "ca.server.acme"
-stepca_url: "https://ca.server.acme:9000"
-stepca_fingerprint: "" # fill in after first `step ca bootstrap`
-stepca_root_cert_path: "/etc/step-ca/certs/root_ca.crt"
-stepca_provisioner: "acme"
-step_cli_version: "0.28.3"
+openvpn_stepca_url: "https://ca.server.acme:9000"
+openvpn_stepca_fingerprint: "" # fill in after first `step ca bootstrap`
+openvpn_stepca_root_cert_path: "/etc/step-ca/certs/root_ca.crt"
+openvpn_stepca_provisioner: "acme"
+openvpn_step_cli_version: "0.28.3"
 
 # ---- x-PKI / NSS-VPKI ----
 # Public RCA certificate from the KTH NSS-VPKI.  Fetched at provision time;
