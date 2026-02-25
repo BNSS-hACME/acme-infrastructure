@@ -3,4 +3,5 @@
   hosts: nextcloud
   become: yes
   roles:
+    - common
     - nextcloud
