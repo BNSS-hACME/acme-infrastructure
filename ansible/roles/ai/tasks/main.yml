@@ -22,9 +22,7 @@
 - name: Configure Ollama systemd service
   become: true
   vars:
-    ai_ollama_bind_address: >-
-      {{ ai_ollama_host | default('127.0.0.1') }}
-      :{{ ai_ollama_port | default(11434) }}
+    ai_ollama_bind_address: "{{ (ai_ollama_host | default('127.0.0.1')) ~ ':' ~ (ai_ollama_port | default(11434)) }}"
   ansible.builtin.copy:
     dest: /etc/systemd/system/ollama.service
     mode: "0644"
@@ -66,11 +64,8 @@
 - name: Pull models
   become: true
   vars:
-    ai_ollama_api_endpoint: >-
-      {{ ai_ollama_client_host |
-      default(ai_ollama_host | default('127.0.0.1')) }}
-      :{{ ai_ollama_port | default(11434) }}
-  ansible.builtin.command: /usr/local/bin/ollama pull {{ item }}
+    ai_ollama_api_endpoint: "{{ (ai_ollama_client_host | default(ai_ollama_host | default('127.0.0.1'))) ~ ':' ~ (ai_ollama_port | default(11434)) }}"
+  ansible.builtin.command: ollama pull {{ item }}
   loop: "{{ ai_ollama_models }}"
   environment:
     OLLAMA_HOST: "{{ ai_ollama_api_endpoint }}"
@@ -79,3 +74,10 @@
   retries: 3
   delay: 5
   until: ai_pull_models_result is succeeded
+
+- name: Ensure Ollama service is enabled and started
+  become: true
+  ansible.builtin.systemd:
+    name: ollama
+    state: started
+    enabled: true
