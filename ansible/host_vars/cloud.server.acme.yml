@@ -1,5 +1,4 @@
 ---
-
 firewall:
   ports:
     - 80
