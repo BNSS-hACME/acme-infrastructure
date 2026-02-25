@@ -2,6 +2,8 @@ router.server.acme
 vpn.server.acme
 dns.server.acme
 cloud.server.acme
+dvwa.server.acme
+ai.server.acme
 
 [router]
 router.server.acme
@@ -17,3 +19,7 @@ cloud.server.acme
 
 [ai]
 ai.server.acme
+
+[dvwa]
+dvwa.server.acme
+
