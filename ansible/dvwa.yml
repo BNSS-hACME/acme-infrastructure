@@ -1,9 +1,7 @@
 ---
 - name: Install and configure DVWA
   hosts: dvwa
-  become: yes
-  vars_files:
-    - vault.yml
+  become: true
   roles:
     - common
     - dvwa
