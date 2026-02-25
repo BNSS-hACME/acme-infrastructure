@@ -36,7 +36,7 @@ MACHINES = {
   },
   "ai.server.acme" => {
     ip: "10.0.50.13",
-    memory: 2096,
+    memory: 2048,
     cpus: 2,
     cloud_init: <<~YAML,
       package_update: true
