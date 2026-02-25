@@ -1,7 +1,7 @@
 ---
 - name: Install and configure Keycloak
   hosts: keycloak
-  become: yes
+  become: true
   roles:
     - common
     - keycloak

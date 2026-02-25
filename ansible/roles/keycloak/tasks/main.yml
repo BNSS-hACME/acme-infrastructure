@@ -6,7 +6,7 @@
       - curl
       - gnupg
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: 1.2. Create directory for Docker GPG key
   ansible.builtin.file:
@@ -22,17 +22,17 @@
 
 - name: 1.4. Add Docker repository to APT sources
   ansible.builtin.apt_repository:
-    # Note: We hardcode 'bookworm' (Debian 12) here because Docker's official 
+    # Note: We hardcode 'bookworm' (Debian 12) here because Docker's official
     # repository often doesn't have a 'trixie' (Debian 13) release channel yet.
     # The bookworm packages work perfectly on trixie.
     repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable"
     state: present
     filename: docker
-    update_cache: yes
+    update_cache: true
 
 - name: 1.5. Install Docker Engine and Compose Plugin
   ansible.builtin.apt:
-    name: 
+    name:
       - docker-ce
       - docker-ce-cli
       - containerd.io
@@ -89,5 +89,6 @@
     mode: '0644'
 
 - name: Start Keycloak with Docker Compose
-  ansible.builtin.shell: docker compose -f /opt/keycloak/docker-compose.yml up -d
-
+  ansible.builtin.command:
+    cmd: docker compose -f /opt/keycloak/docker-compose.yml up -d
+  changed_when: false
