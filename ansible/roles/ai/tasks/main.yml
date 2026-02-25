@@ -64,7 +64,7 @@
   ansible.builtin.command: /usr/local/bin/ollama pull {{ item }}
   loop: "{{ ollama_models }}"
   environment:
-    # manche Setups brauchen "http://", manche nur "host:port" – kann ich nicht verifizieren
+    # Some setups require "http://", others only "host:port" – cannot be verified here
     OLLAMA_HOST: "{{ ollama_client_host | default(ollama_host | default('127.0.0.1')) }}:{{ ollama_port | default(11434) }}"
   register: pull_models_result
   retries: 3
