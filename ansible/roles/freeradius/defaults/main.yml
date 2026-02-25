@@ -1,5 +1,5 @@
 ---
-clients:
+freeradius_clients:
   - name: stockholm-router
     ipaddr: 10.0.10.1
     secret: !vault |
