@@ -67,6 +67,7 @@
     # Some setups require "http://", others only "host:port" – cannot be verified here
     OLLAMA_HOST: "{{ ollama_client_host | default(ollama_host | default('127.0.0.1')) }}:{{ ollama_port | default(11434) }}"
   register: pull_models_result
+  changed_when: false
   retries: 3
   delay: 5
   until: pull_models_result is succeeded
