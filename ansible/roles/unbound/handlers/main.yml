@@ -1,10 +1,10 @@
 ---
-- name: Restart unbound
+- name: restart unbound
   ansible.builtin.systemd:
     name: unbound
     state: restarted
 
-- name: Reload unbound
+- name: reload unbound
   ansible.builtin.systemd:
     name: unbound
     state: reloaded
