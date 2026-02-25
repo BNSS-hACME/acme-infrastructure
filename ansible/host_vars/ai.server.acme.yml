@@ -1,9 +1,9 @@
 ---
-ollama_host: "0.0.0.0"
-ollama_client_host: "127.0.0.1"
-ollama_port: 11434
+ai_ollama_host: "0.0.0.0"
+ai_ollama_client_host: "127.0.0.1"
+ai_ollama_port: 11434
 
-ollama_models:
+ai_ollama_models:
   - qwen3:0.6b
 
 firewall:
