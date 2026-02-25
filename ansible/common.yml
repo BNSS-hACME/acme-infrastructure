@@ -1,6 +1,6 @@
 ---
 - name: Run common role
   hosts: all
-  become: yes
+  become: true
   roles:
     - common

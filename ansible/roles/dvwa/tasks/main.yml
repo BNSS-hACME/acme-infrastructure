@@ -1,6 +1,7 @@
-- name: install dependencies
+---
+- name: Install dependencies
   ansible.builtin.apt:
-    update_cache: yes
+    update_cache: true
     name:
       - apache2
       - mariadb-server
@@ -12,65 +13,93 @@
       - libapache2-mod-php
     state: present
 
-- name: apache running
+- name: Apache running
   ansible.builtin.service:
     name: apache2
     state: started
     enabled: true
 
-- name: mariadb running
+- name: Mariadb running
   ansible.builtin.service:
     name: mariadb
     state: started
     enabled: true
 
-- name: install python3-pymysql
+- name: Install python3-pymysql
   ansible.builtin.apt:
     name: python3-pymysql
     state: present
 
-- name: create dvwa database
-  community.mysql.mysql_db:
-    name: "{{ dvwa_db_database }}"
-    state: present
-    login_user: root
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-
-- name: create dvwa database user
-  community.mysql.mysql_user:
-    name: "{{ dvwa_db_user }}"
-    password: "{{ dvwa_db_password }}"
-    priv: "{{ dvwa_db_database }}.*:ALL"
-    host: "127.0.0.1"
-    state: present
-    login_user: root
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    
-- name: Read root git safe.directory list (if any)
-  become: true
-  ansible.builtin.command: git config --global --get-all safe.directory
-  register: root_safe_dirs
+- name: Check if dvwa database exists
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -N -e
+      "SHOW DATABASES LIKE '{{ dvwa_db_database }}';"
+  register: dvwa_db_exists
   changed_when: false
   failed_when: false
 
-- name: Add DVWA as root safe.directory
+- name: Create dvwa database when missing
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -e
+      "CREATE DATABASE IF NOT EXISTS `{{ dvwa_db_database }}`;"
+  when: dvwa_db_exists.stdout == ''
+  changed_when: true
+
+- name: Check if dvwa database user exists
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -N -e
+      "SELECT User FROM mysql.user
+      WHERE User='{{ dvwa_db_user }}' AND Host='127.0.0.1';"
+  register: dvwa_db_user_exists
+  changed_when: false
+  failed_when: false
+
+- name: Create dvwa database user and grant privileges when missing
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -e
+      "CREATE USER IF NOT EXISTS '{{ dvwa_db_user }}'@'127.0.0.1'
+      IDENTIFIED BY '{{ dvwa_db_password }}';"
+  when: dvwa_db_user_exists.stdout == ''
+  changed_when: true
+
+- name: Grant privileges to dvwa database user
+  ansible.builtin.command:
+    cmd: >-
+      mysql --socket=/var/run/mysqld/mysqld.sock -e
+      "GRANT ALL PRIVILEGES ON `{{ dvwa_db_database }}`.*
+      TO '{{ dvwa_db_user }}'@'127.0.0.1'; FLUSH PRIVILEGES;"
+  when: dvwa_db_user_exists.stdout == ''
+  changed_when: true
+
+- name: Ensure Git global `safe.directory` contains DVWA path
+  ansible.builtin.blockinfile:
+    dest: /root/.gitconfig
+    block: |
+      [safe]
+        directory = /var/www/html/dvwa
+    create: true
+    owner: root
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - safe.directory for DVWA"
   become: true
-  ansible.builtin.command: git config --global --add safe.directory /var/www/html/dvwa
-  when: (root_safe_dirs.stdout | regex_search('(?m)^/var/www/html/dvwa$')) is none 
 
 - name: Check if DVWA repo already exists
   ansible.builtin.stat:
     path: /var/www/html/dvwa/.git
   register: dvwa_repo
 
-- name: clone dvwa
+- name: Clone dvwa
   ansible.builtin.git:
     repo: https://github.com/digininja/DVWA.git
     dest: /var/www/html/dvwa
     version: master
-    update: yes
+    update: true
   when: not dvwa_repo.stat.exists
-  
+
 - name: Deploy DVWA config
   ansible.builtin.template:
     src: config.inc.php.j2
@@ -84,13 +113,14 @@
     path: /var/www/html/dvwa
     owner: www-data
     group: www-data
-    recurse: yes
+    recurse: true
 
 - name: Enable Apache rewrite module
   ansible.builtin.command: a2enmod rewrite
   args:
     creates: /etc/apache2/mods-enabled/rewrite.load
-  register: enable_rewrite_module
+  register: dvwa_enable_rewrite_module
+  changed_when: dvwa_enable_rewrite_module.rc == 0
 
 # --- LOGGING SETUP ---
 - name: Deploy DVWA apache site config
@@ -103,19 +133,21 @@
 - name: Disable default apache site
   ansible.builtin.command: a2dissite 000-default.conf
   ignore_errors: true
-  register: disable_default_site
+  register: dvwa_disable_default_site
+  changed_when: dvwa_disable_default_site.rc == 0
 
 - name: Enable DVWA site
   ansible.builtin.command: a2ensite dvwa.conf
   args:
     creates: /etc/apache2/sites-enabled/dvwa.conf
-  register: enable_dvwa_site
+  register: dvwa_enable_dvwa_site
+  changed_when: dvwa_enable_dvwa_site.rc == 0
 
 - name: Restart Apache
   ansible.builtin.service:
     name: apache2
     state: restarted
-  when: enable_rewrite_module is changed
-        or dvwa_site_conf is changed
-        or disable_default_site is changed
-        or enable_dvwa_site is changed
+  when: dvwa_enable_rewrite_module is changed
+    or dvwa_site_conf is changed
+    or dvwa_disable_default_site is changed
+    or dvwa_enable_dvwa_site is changed
