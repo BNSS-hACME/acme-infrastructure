@@ -1,0 +1,14 @@
+---
+- name: Install FreeRADIUS packages
+  apt:
+    name:
+      - freeradius
+      - freeradius-utils
+    state: present
+    update_cache: yes
+
+- name: Ensure FreeRADIUS service is enabled and started
+  service:
+    name: freeradius
+    state: started
+    enabled: yes
