@@ -1,6 +1,0 @@
-ollama_host: "127.0.0.1"
-ollama_port: 11434
-
-ollama_models:
-  - qwen3:0.6b
-  
