@@ -1,7 +1,7 @@
 ---
 - name: Determine deb architecture
   ansible.builtin.set_fact:
-    _oauth2_deb_arch: "{{ 'arm64' if ansible_facts.architecture == 'aarch64' else 'amd64' }}"
+    openvpn_deb_arch: "{{ 'arm64' if ansible_facts.architecture == 'aarch64' else 'amd64' }}"
 
 # ---- TLS key material ----
 
@@ -42,19 +42,19 @@
 
 - name: Fetch Step CA root certificate
   ansible.builtin.slurp:
-    src: "{{ openvpn_stepca_root_cert_path }}"
+    src: "{{ openvpnopenvpn_stepca_root_cert_path }}"
   delegate_to: "{{ stepca_host }}"
-  register: _stepca_root_cert
+  register: openvpnopenvpn_stepca_root_cert
   when: stepca_host is defined
 
 - name: Deploy Step CA root certificate into CA bundle parts
   ansible.builtin.copy:
-    content: "{{ _stepca_root_cert.content | b64decode }}"
+    content: "{{ openvpn_stepca_root_cert.content | b64decode }}"
     dest: /etc/openvpn/server/ca-parts/02-stepca-root.crt
     mode: "0644"
   when:
     - stepca_host is defined
-    - _stepca_root_cert.content is defined
+    - openvpn_stepca_root_cert.content is defined
   notify: Restart openvpn
 
 - name: Assemble CA bundle from parts
@@ -68,7 +68,10 @@
 
 - name: Install step CLI
   ansible.builtin.apt:
-    deb: "https://dl.smallstep.com/gh-release/cli/gh-release-header/v{{ openvpn_step_cli_version }}/step-cli_{{ openvpn_step_cli_version }}_{{ _oauth2_deb_arch }}.deb"
+    deb: >-
+      https://dl.smallstep.com/gh-release/cli/gh-release-header/v{{
+      openvpn_step_cli_version }}/step-cli_{{ openvpn_step_cli_version
+      }}_{{ openvpn_deb_arch }}.deb
     state: present
   when: stepca_host is defined
 
@@ -137,7 +140,7 @@
     enabled: true
     state: started
 
-#- name: Enable IP forwarding
+# - name: Enable IP forwarding
 #  ansible.builtin.sysctl:
 #    name: net.ipv4.ip_forward
 #    value: "1"
@@ -148,7 +151,10 @@
 
 - name: Install openvpn-auth-oauth2
   ansible.builtin.apt:
-    deb: "https://github.com/jkroepke/openvpn-auth-oauth2/releases/download/v{{ openvpn_auth_oauth2_version }}/openvpn-auth-oauth2_{{ openvpn_auth_oauth2_version }}_linux_{{ _oauth2_deb_arch }}.deb"
+    deb: >-
+      https://github.com/jkroepke/openvpn-auth-oauth2/releases/download/v{{
+      openvpn_auth_oauth2_version }}/openvpn-auth-oauth2_{{
+      openvpn_auth_oauth2_version }}_linux_{{ openvpn_deb_arch }}.deb
     state: present
 
 - name: Deploy openvpn-auth-oauth2 config
