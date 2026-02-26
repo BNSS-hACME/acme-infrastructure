@@ -98,6 +98,12 @@
   register: ca_json_update
   changed_when: "'changed' in ca_json_update.stdout"
 
+- name: Restart step-ca if config changed
+  ansible.builtin.service:
+    name: step-ca
+    state: restarted
+  when: ca_json_update.changed
+
 - name: Fix ownership of step-ca directory recursively
   ansible.builtin.file:
     path: /etc/step-ca
