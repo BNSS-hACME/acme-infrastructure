@@ -116,8 +116,8 @@
     seconds: 10
 
 - name: 6. Check if Nextcloud is already installed
-  ansible.builtin.command:
-    cmd: docker exec -u 33 nextcloud-app php occ status --output=json
+  ansible.builtin.shell: |
+    docker exec -u 33 nextcloud-app php occ status | grep "installed: true" || true
   register: nextcloud_status
   failed_when: false
   changed_when: false
@@ -131,9 +131,7 @@
       --database-host "db" \
       --admin-user "admin" \
       --admin-pass "{{ vault_nextcloud_admin_password }}"
-  when: >-
-    not ((nextcloud_status.stdout | default('{}') | from_json).installed |
-    default(false))
+  when: "'installed: true' not in nextcloud_status.stdout"
   register: nextcloud_occ_install
   until: nextcloud_occ_install.rc == 0
   retries: 10
