@@ -42,10 +42,25 @@
 
 - name: Fetch Step CA root certificate
   ansible.builtin.slurp:
-    src: "{{ openvpnopenvpn_stepca_root_cert_path }}"
+    src: "{{ openvpn_stepca_root_cert_path }}"
   delegate_to: "{{ stepca_host }}"
-  register: openvpnopenvpn_stepca_root_cert
+  register: openvpn_stepca_root_cert
   when: stepca_host is defined
+
+- name: Fetch Step CA fingerprint from CA host
+  ansible.builtin.command:
+    cmd: step certificate fingerprint {{ openvpn_stepca_root_cert_path }}
+  delegate_to: "{{ stepca_host }}"
+  register: _openvpn_stepca_fp
+  changed_when: false
+  when: stepca_host is defined
+
+- name: Set Step CA fingerprint fact
+  ansible.builtin.set_fact:
+    openvpn_stepca_fingerprint: "{{ _openvpn_stepca_fp.stdout | trim }}"
+  when:
+    - stepca_host is defined
+    - _openvpn_stepca_fp.rc == 0
 
 - name: Deploy Step CA root certificate into CA bundle parts
   ansible.builtin.copy:
@@ -89,7 +104,10 @@
 
 - name: Deploy Step CA provisioner password file
   ansible.builtin.copy:
-    content: "{{ vault_stepca_provisioner_password }}"
+    # The admin provisioner password is the same key used to initialise step-ca
+    # (step ca init --password-file).  Re-use it from the CA host's vars rather
+    # than duplicating the secret.
+    content: "{{ hostvars[stepca_host]['step_ca_password'] }}"
     dest: /etc/openvpn/server/provisioner-password.txt
     owner: root
     group: root
