@@ -1,0 +1,6 @@
+---
+- name: Run common role
+  hosts: all
+  become: true
+  roles:
+    - common

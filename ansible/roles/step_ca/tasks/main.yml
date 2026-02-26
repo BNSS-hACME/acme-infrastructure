@@ -1,0 +1,104 @@
+---
+- name: Install required APT packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gpg
+      - ca-certificates
+    state: present
+    update_cache: true
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Smallstep repository signing key
+  ansible.builtin.get_url:
+    url: https://packages.smallstep.com/keys/apt/repo-signing-key.gpg
+    dest: /etc/apt/keyrings/smallstep.asc
+    mode: "0644"
+
+- name: Add Smallstep apt source (deb822 format)
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/smallstep.sources
+    mode: "0644"
+    content: |
+      Types: deb
+      URIs: https://packages.smallstep.com/stable/debian
+      Suites: debs
+      Components: main
+      Signed-By: /etc/apt/keyrings/smallstep.asc
+
+- name: Update apt cache after adding Smallstep repo
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install step-cli and step-ca
+  ansible.builtin.apt:
+    name:
+      - step-cli
+      - step-ca
+    state: present
+
+- name: Create stepca system user
+  ansible.builtin.user:
+    name: stepca
+    system: true
+    home: /etc/step-ca
+    shell: /usr/sbin/nologin
+
+- name: Ensure step-ca directory exists
+  ansible.builtin.file:
+    path: /etc/step-ca
+    state: directory
+    owner: stepca
+    group: stepca
+    mode: "0750"
+
+- name: Install password file
+  ansible.builtin.copy:
+    content: "{{ step_ca_password }}"
+    dest: /etc/step-ca/password.txt
+    owner: stepca
+    group: stepca
+    mode: "0600"
+
+- name: Initialize Step CA (only if not initialized)
+  ansible.builtin.shell: |
+    step ca init \
+      --name "ACME Internal CA" \
+      --dns "auth.server.acme" \
+      --address ":9000" \
+      --provisioner "admin" \
+      --password-file /etc/step-ca/password.txt \
+      --deployment-type standalone
+  args:
+    creates: /etc/step-ca/config/ca.json
+  environment:
+    STEPPATH: /etc/step-ca
+
+- name: Fix ownership of step-ca directory recursively
+  ansible.builtin.file:
+    path: /etc/step-ca
+    state: directory
+    recurse: true
+    owner: stepca
+    group: stepca
+
+- name: Install systemd service file
+  ansible.builtin.copy:
+    src: step-ca.service
+    dest: /etc/systemd/system/step-ca.service
+    mode: "0644"
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start step-ca
+  ansible.builtin.service:
+    name: step-ca
+    enabled: true
+    state: started

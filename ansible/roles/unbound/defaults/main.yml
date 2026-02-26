@@ -1,0 +1,19 @@
+---
+# Unbound role default variables
+
+# Network settings
+unbound_interface: 0.0.0.0
+unbound_port: 53
+unbound_ipv6_enabled: true
+
+# Access control list
+unbound_access_control:
+  - network: 127.0.0.0/8
+    action: allow
+  - network: 10.0.0.0/8
+    action: allow
+  - network: 0.0.0.0/0
+    action: refuse
+
+# Set local resolver
+unbound_set_local_resolver: true
