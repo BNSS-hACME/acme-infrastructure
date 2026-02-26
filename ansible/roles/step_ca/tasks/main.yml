@@ -69,7 +69,7 @@
   ansible.builtin.shell: |
     step ca init \
       --name "ACME Internal CA" \
-      --dns "ca.server.acme" \
+      --dns "auth.server.acme" \
       --address ":9000" \
       --provisioner "admin" \
       --password-file /etc/step-ca/password.txt \
