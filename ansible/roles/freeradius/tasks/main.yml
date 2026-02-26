@@ -22,7 +22,7 @@
 
 - name: Wait for Step CA to be reachable
   ansible.builtin.uri:
-    url: https://ca.server.acme:9000/health
+    url: https://auth.server.acme:9000/health
     method: GET
     validate_certs: false
   register: freeradius_ca_health
@@ -38,7 +38,7 @@
 - name: Bootstrap step CLI for root
   ansible.builtin.command: >
     step ca bootstrap
-    --ca-url https://ca.server.acme:9000
+    --ca-url https://auth.server.acme:9000
     --fingerprint {{ freeradius_ca_fingerprint.stdout }}
   args:
     creates: /root/.step/config/defaults.json
@@ -58,7 +58,7 @@
     step ca certificate radius.server.acme \
       /etc/freeradius/certs/radius.crt \
       /etc/freeradius/certs/radius.key \
-      --ca-url https://ca.server.acme:9000 \
+      --ca-url https://auth.server.acme:9000 \
       --root /etc/step-ca/certs/root_ca.crt \
       --password-file /etc/step-ca/password.txt
   args:
