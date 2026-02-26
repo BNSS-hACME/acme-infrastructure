@@ -47,21 +47,6 @@
   register: openvpn_stepca_root_cert
   when: stepca_host is defined
 
-- name: Fetch Step CA fingerprint from CA host
-  ansible.builtin.command:
-    cmd: step certificate fingerprint {{ openvpn_stepca_root_cert_path }}
-  delegate_to: "{{ stepca_host }}"
-  register: _openvpn_stepca_fp
-  changed_when: false
-  when: stepca_host is defined
-
-- name: Set Step CA fingerprint fact
-  ansible.builtin.set_fact:
-    openvpn_stepca_fingerprint: "{{ _openvpn_stepca_fp.stdout | trim }}"
-  when:
-    - stepca_host is defined
-    - _openvpn_stepca_fp.rc == 0
-
 - name: Deploy Step CA root certificate into CA bundle parts
   ansible.builtin.copy:
     content: "{{ openvpn_stepca_root_cert.content | b64decode }}"
@@ -86,21 +71,9 @@
     deb: >-
       https://dl.smallstep.com/gh-release/cli/gh-release-header/v{{
       openvpn_step_cli_version }}/step-cli_{{ openvpn_step_cli_version
-      }}_{{ openvpn_deb_arch }}.deb
+      }}-1_{{ openvpn_deb_arch }}.deb
     state: present
   when: stepca_host is defined
-
-- name: Bootstrap step CLI against Step CA
-  ansible.builtin.command:
-    cmd: >
-      step ca bootstrap
-      --ca-url {{ openvpn_stepca_url }}
-      --fingerprint {{ openvpn_stepca_fingerprint }}
-      --install
-    creates: /root/.step/config/defaults.json
-  when:
-    - stepca_host is defined
-    - openvpn_stepca_fingerprint | length > 0
 
 - name: Deploy Step CA provisioner password file
   ansible.builtin.copy:
@@ -120,13 +93,13 @@
       step ca certificate {{ openvpn_server_cn }}
       /etc/openvpn/server/server.crt
       /etc/openvpn/server/server.key
+      --ca-url {{ openvpn_stepca_url }}
+      --root /etc/openvpn/server/ca-parts/02-stepca-root.crt
       --provisioner {{ openvpn_stepca_provisioner }}
       --provisioner-password-file /etc/openvpn/server/provisioner-password.txt
       --not-after 2160h
     creates: /etc/openvpn/server/server.crt
-  when:
-    - stepca_host is defined
-    - openvpn_stepca_fingerprint | length > 0
+  when: stepca_host is defined
   notify: Restart openvpn
 
 # ---- OpenVPN server ----
@@ -134,6 +107,22 @@
 - name: Install OpenVPN
   ansible.builtin.apt:
     name: openvpn
+    state: present
+
+- name: Create openvpn system group
+  ansible.builtin.group:
+    name: openvpn
+    system: true
+    state: present
+
+- name: Create openvpn system user
+  ansible.builtin.user:
+    name: openvpn
+    group: openvpn
+    system: true
+    shell: /usr/sbin/nologin
+    home: /var/lib/openvpn
+    create_home: false
     state: present
 
 - name: Deploy management password file
