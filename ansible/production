@@ -4,6 +4,7 @@ dns.server.acme
 cloud.server.acme
 auth.server.acme
 dvwa.server.acme
+ai.server.acme
 
 [router]
 router.server.acme
@@ -19,6 +20,9 @@ auth.server.acme
 
 [nextcloud]
 cloud.server.acme
+
+[ai]
+ai.server.acme
 
 [dvwa]
 dvwa.server.acme
