@@ -90,7 +90,7 @@ key server.key  # This file should be kept secret
 # Accept certs from Step CA (long-term) and NSS-VPKI PCA (pseudonyms).
 # Without 'optional', users without any cert cannot connect at all and the
 # Keycloak OAuth2 fallback (openvpn-auth-oauth2) never fires.
-verify-client-cert optional
+verify-client-cert {{ 'required' if openvpn_cert_only_auth else 'optional' }}
 
 # Diffie hellman parameters.
 # Generate your own with:
@@ -314,8 +314,10 @@ verb 3
 # can automatically reconnect.
 explicit-exit-notify 1
 
+{% if not openvpn_cert_only_auth %}
 # ---- openvpn-auth-oauth2 (SSO via OIDC) ----
 management 127.0.0.1 {{ openvpn_auth_oauth2_mgmt_port }} /etc/openvpn/server/management-password.txt
 management-client-auth
 auth-user-pass-optional
 auth-gen-token {{ openvpn_auth_oauth2_auth_token_lifetime }} external-auth
+{% endif %}
