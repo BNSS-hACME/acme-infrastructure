@@ -1,0 +1,23 @@
+
+# Used by both Keycloak and Nextcloud for OIDC Single Sign-On trust
+vault_nextcloud_oidc_secret: "my_predefined_secure_secret_123"
+
+# ==============================================================================
+# Keycloak Specific Secrets
+# ==============================================================================
+
+# The initial admin password for the Keycloak web console
+vault_keycloak_admin_password: "secure_password"
+
+# ==============================================================================
+# Nextcloud Specific Secrets
+# ==============================================================================
+
+# Nextcloud web console admin password
+vault_nextcloud_admin_password: "secure_password"
+
+# Nextcloud MariaDB root password
+vault_nextcloud_db_root_password: "acme_root_pass"
+
+# Nextcloud MariaDB user password
+vault_nextcloud_db_password: "acme_nc_pass"
