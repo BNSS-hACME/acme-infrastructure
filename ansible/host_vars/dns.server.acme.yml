@@ -1,6 +1,6 @@
 ---
 unbound_local_zones:
-  - name: "acme."
+  - name: "server.acme."
     type: static
 
 unbound_local_data:
