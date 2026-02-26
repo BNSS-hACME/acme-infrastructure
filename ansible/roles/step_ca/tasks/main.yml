@@ -95,8 +95,8 @@
     else:
         print('unchanged')
     "
-  register: ca_json_update
-  changed_when: "'changed' in ca_json_update.stdout"
+  register: step_ca_json_update
+  changed_when: "'changed' in step_ca_json_update.stdout"
   notify: Restart step-ca
 
 - name: Fix ownership of step-ca directory recursively
