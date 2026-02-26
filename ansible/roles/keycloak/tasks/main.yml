@@ -17,21 +17,35 @@
     mode: "0755"
 
 # ---------------------------------------------------------
-# STEP-CA INTEGRATION PLACEHOLDER
+# STEP-CA INTEGRATION
 # ---------------------------------------------------------
-# Future Step-CA integration should drop the certificates here:
-# /var/lib/keycloak/certs/tls.crt
-# /var/lib/keycloak/certs/tls.key
-# With permissions matching the directory (owner/group 1000 for Keycloak)
-#
-# Example (if certificates are provided elsewhere manually initially):
-# - name: Step-CA placeholder
-#   ansible.builtin.copy:
-#     src: /tmp/my-certs/tls.crt
-#     dest: /var/lib/keycloak/certs/tls.crt
-#     owner: 1000
-#     group: 1000
-#     mode: '0644'
+- name: Check if Keycloak certificate already exists
+  ansible.builtin.stat:
+    path: /var/lib/keycloak/certs/tls.crt
+  register: keycloak_cert_stat
+
+- name: Generate Keycloak Certificate locally
+  ansible.builtin.shell: |
+    step ca certificate auth.server.acme \
+      /var/lib/keycloak/certs/tls.crt \
+      /var/lib/keycloak/certs/tls.key \
+      --ca-url https://auth.server.acme:9000 \
+      --root /etc/step-ca/certs/root_ca.crt \
+      --not-after=87600h \
+      --password-file /etc/step-ca/password.txt
+  when: not keycloak_cert_stat.stat.exists
+  changed_when: true
+
+- name: Set correct permissions for Keycloak certificates
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "1000"
+    group: "1000"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /var/lib/keycloak/certs/tls.crt, mode: "0644" }
+    - { path: /var/lib/keycloak/certs/tls.key, mode: "0600" }
+  when: not keycloak_cert_stat.stat.exists
 # ---------------------------------------------------------
 
 - name: Copy realm-export.json

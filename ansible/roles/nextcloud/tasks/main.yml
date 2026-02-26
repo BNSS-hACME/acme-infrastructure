@@ -21,14 +21,83 @@
     - /var/lib/nextcloud/ca-certificates
 
 # ---------------------------------------------------------
-# STEP-CA INTEGRATION PLACEHOLDER
+# STEP-CA INTEGRATION
 # ---------------------------------------------------------
-# Future Step-CA integration should drop the certificates here:
-# /var/lib/nextcloud/certs/tls.crt
-# /var/lib/nextcloud/certs/tls.key
-# And the Root CA certificate here:
-# /var/lib/nextcloud/ca-certificates/step-ca.crt
-# With permissions matching the directory (owner/group 33 for Nextcloud)
+- name: Check if Nextcloud certificate already exists
+  ansible.builtin.stat:
+    path: /var/lib/nextcloud/certs/tls.crt
+  register: nextcloud_cert_stat
+
+- name: Generate Nextcloud Certificate on CA (Delegate)
+  ansible.builtin.shell: |
+    step ca certificate cloud.server.acme \
+      /tmp/cloud_server_acme.crt \
+      /tmp/cloud_server_acme.key \
+      --ca-url https://auth.server.acme:9000 \
+      --root /etc/step-ca/certs/root_ca.crt \
+      --not-after=87600h \
+      --password-file /etc/step-ca/password.txt
+  delegate_to: auth.server.acme
+  when: not nextcloud_cert_stat.stat.exists
+  changed_when: true
+
+- name: Read generated certificate from CA
+  ansible.builtin.slurp:
+    src: /tmp/cloud_server_acme.crt
+  delegate_to: auth.server.acme
+  register: slurp_nextcloud_cert
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Read generated key from CA
+  ansible.builtin.slurp:
+    src: /tmp/cloud_server_acme.key
+  delegate_to: auth.server.acme
+  register: slurp_nextcloud_key
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Read Step CA root certificate
+  ansible.builtin.slurp:
+    src: /etc/step-ca/certs/root_ca.crt
+  delegate_to: auth.server.acme
+  register: slurp_stepca_root
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Clean up temporary files on CA
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  delegate_to: auth.server.acme
+  loop:
+    - /tmp/cloud_server_acme.crt
+    - /tmp/cloud_server_acme.key
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Write Nextcloud certificate to destination
+  ansible.builtin.copy:
+    content: "{{ slurp_nextcloud_cert['content'] | b64decode }}"
+    dest: /var/lib/nextcloud/certs/tls.crt
+    owner: "33"
+    group: "33"
+    mode: "0644"
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Write Nextcloud key to destination
+  ansible.builtin.copy:
+    content: "{{ slurp_nextcloud_key['content'] | b64decode }}"
+    dest: /var/lib/nextcloud/certs/tls.key
+    owner: "33"
+    group: "33"
+    mode: "0600"
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Write Step CA root certificate to destination
+  ansible.builtin.copy:
+    content: "{{ slurp_stepca_root['content'] | b64decode }}"
+    dest: /var/lib/nextcloud/ca-certificates/step-ca.crt
+    owner: "33"
+    group: "33"
+    mode: "0644"
+  when: not nextcloud_cert_stat.stat.exists
 # ---------------------------------------------------------
 
 - name: 3. Copy Docker Compose to VM
