@@ -106,8 +106,6 @@ Vagrant.configure("2") do |config|
       INT_IF=$(ip -o -4 route show to 10.0.50.0/24 | awk '{print $3}' | head -n1)
       [ -z "$INT_IF" ] && INT_IF="enp0s9"
 
-      echo "Routing via External: $EXT_IF and Internal: $INT_IF"
-
       # Setup NAT rules using the dynamically discovered interfaces
       iptables -t nat -C POSTROUTING -s 10.0.50.0/24 -o $EXT_IF -j MASQUERADE 2>/dev/null || \
         iptables -t nat -A POSTROUTING -s 10.0.50.0/24 -o $EXT_IF -j MASQUERADE
