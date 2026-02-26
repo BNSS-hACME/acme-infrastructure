@@ -19,29 +19,32 @@
   args:
     creates: /usr/local/bin/ollama
 
+- name: Ensure ollama group exists
+  become: true
+  ansible.builtin.group:
+    name: ollama
+    system: true
+    state: present
+
+- name: Ensure ollama user exists
+  become: true
+  ansible.builtin.user:
+    name: ollama
+    group: ollama
+    system: true
+    create_home: true
+    home: /var/lib/ollama
+    shell: /usr/sbin/nologin
+    state: present
+
 - name: Configure Ollama systemd service
   become: true
   vars:
     ai_ollama_bind_address: "{{ (ai_ollama_host | default('127.0.0.1')) ~ ':' ~ (ai_ollama_port | default(11434)) }}"
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: ollama.systemd.j2
     dest: /etc/systemd/system/ollama.service
     mode: "0644"
-    content: |
-      [Unit]
-      Description=Ollama Service
-      After=network-online.target
-      Wants=network-online.target
-
-      [Service]
-      Type=simple
-      Environment=OLLAMA_HOST={{ ai_ollama_bind_address }}
-      ExecStart=/usr/local/bin/ollama serve
-      Restart=always
-      RestartSec=2
-      DynamicUser=yes
-
-      [Install]
-      WantedBy=multi-user.target
   notify: Restart Ollama
 
 - name: Ensure Ollama service is enabled and started
@@ -50,6 +53,10 @@
     name: ollama
     state: started
     enabled: true
+    daemon_reload: true
+
+- name: Apply Ollama service changes immediately
+  ansible.builtin.meta: flush_handlers
 
 - name: Wait for Ollama API port
   vars:
@@ -74,10 +81,3 @@
   retries: 3
   delay: 5
   until: ai_pull_models_result is succeeded
-
-- name: Ensure Ollama service is enabled and started
-  become: true
-  ansible.builtin.systemd:
-    name: ollama
-    state: started
-    enabled: true

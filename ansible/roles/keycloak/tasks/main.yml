@@ -1,0 +1,52 @@
+---
+- name: Create Directory Structure for Keycloak (General)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/keycloak
+    - /opt/keycloak/import
+
+- name: Create Certificate Directory for Keycloak
+  ansible.builtin.file:
+    path: /var/lib/keycloak/certs
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: "0755"
+
+# ---------------------------------------------------------
+# STEP-CA INTEGRATION PLACEHOLDER
+# ---------------------------------------------------------
+# Future Step-CA integration should drop the certificates here:
+# /var/lib/keycloak/certs/tls.crt
+# /var/lib/keycloak/certs/tls.key
+# With permissions matching the directory (owner/group 1000 for Keycloak)
+#
+# Example (if certificates are provided elsewhere manually initially):
+# - name: Step-CA placeholder
+#   ansible.builtin.copy:
+#     src: /tmp/my-certs/tls.crt
+#     dest: /var/lib/keycloak/certs/tls.crt
+#     owner: 1000
+#     group: 1000
+#     mode: '0644'
+# ---------------------------------------------------------
+
+- name: Copy realm-export.json
+  ansible.builtin.template:
+    src: realm-export.json.j2
+    dest: /opt/keycloak/import/realm-export.json
+    mode: "0644"
+
+- name: Copy docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/keycloak/docker-compose.yml
+    mode: "0644"
+
+- name: Start Keycloak with Docker Compose
+  ansible.builtin.command:
+    cmd: docker compose -f /opt/keycloak/docker-compose.yml up -d
+  changed_when: false

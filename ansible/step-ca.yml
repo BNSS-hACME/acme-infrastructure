@@ -1,6 +1,6 @@
 ---
 - name: Install and configure Step CA
-  hosts: ca.server.acme
+  hosts: stepca
   become: true
   roles:
     - step_ca
