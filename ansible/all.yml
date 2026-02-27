@@ -1,0 +1,27 @@
+---
+- name: Common Configuration
+  import_playbook: common.yml
+
+- name: DNS resolver
+  import_playbook: dns.yml
+
+- name: Certificate Authority
+  import_playbook: step-ca.yml
+
+- name: Identity Management
+  import_playbook: keycloak.yml
+
+- name: VPN
+  import_playbook: vpn.yml
+
+- name: Network Authentication
+  import_playbook: freeradius.yml
+
+- name: Cloud Storage
+  import_playbook: nextcloud.yml
+
+- name: AI Services
+  import_playbook: ai.yml
+
+- name: Vulnerable Web App (Lab)
+  import_playbook: dvwa.yml
