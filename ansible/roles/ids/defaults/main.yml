@@ -1,5 +1,5 @@
 ---
-ids_interface: enp0s10
+ids_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
 ids_mode: ids # detect-only first
 ids_home_net: "10.0.50.0/24"
 ids_alert_log: /var/log/ids/alerts.log

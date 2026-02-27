@@ -1,24 +1,74 @@
 ---
 - name: Install suricata IDS
   ansible.builtin.apt:
-    name: suricata suricata-update jq evebox
+    name:
+      - suricata
+      - suricata-update
+      - jq
+      - curl
+      - ca-certificates
+      - gnupg
     state: present
     update_cache: true
 
-- name: Deploy IDS config
-  ansible.builtin.template:
-    src: suricata.yaml.j2
-    dest: /etc/suricata/suricata.yaml
-    mode: "0644"
-  notify: Restart IDS
+# - name: Deploy IDS config
+#   ansible.builtin.template:
+#     src: suricata.yaml.j2
+#     dest: /etc/suricata/suricata.yaml
+#     mode: "0644"
+#     validate: "suricata -T -c %s"
+#   notify: Restart IDS
 
-- name: Deploy IDS rules
-  ansible.builtin.command: suricata-update update-sources
-  register: ids_update_sources
-  changed_when: "'Updated' in ids_update_sources.stdout"
+- name: Ensure IDS alert log directory exists
+  ansible.builtin.file:
+    path: "{{ ids_alert_log | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
 
 - name: Ensure IDS service is enabled
   ansible.builtin.service:
-    name: suricatas
+    name: suricata
+    state: started
+    enabled: true
+
+# - name: Deploy IDS rules
+#   ansible.builtin.command: suricata-update update-sources
+#   register: ids_update_sources
+#   changed_when: "'Updated' in ids_update_sources.stdout"
+
+- name: Ensure keyring dir exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download EveBox repository signing key
+  ansible.builtin.get_url:
+    url: https://evebox.org/files/evebox.asc
+    dest: /etc/apt/keyrings/evebox.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add EveBox APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/evebox.asc] https://evebox.org/files/debian stable main"
+    filename: evebox
+    state: present
+    update_cache: true
+
+- name: Install EveBox
+  ansible.builtin.apt:
+    name: evebox
+    state: present
+    update_cache: true
+
+- name: Ensure EveBox service is enabled
+  ansible.builtin.service:
+    name: evebox
     state: started
     enabled: true

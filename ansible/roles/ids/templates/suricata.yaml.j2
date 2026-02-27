@@ -1,3 +1,33 @@
-suricata_mode: ids 
-suricata_home_net: 10.0.50.0/24
-suricata_alert_log: /var/log/ids/alerts.log
+%YAML 1.1
+---
+vars:
+  address-groups:
+    HOME_NET: "[{{ ids_home_net }}]"
+    EXTERNAL_NET: "!$HOME_NET"
+
+default-rule-path: /var/lib/suricata/rules
+rule-files:
+  - suricata.rules
+
+af-packet:
+  - interface: {{ ids_interface }}
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+
+outputs:
+  - fast:
+      enabled: yes
+      filename: {{ ids_alert_log }}
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: /var/log/suricata/eve.json
+      types:
+        - alert
+        - dns
+        - http
+        - tls
+
+logging:
+  default-log-level: notice
