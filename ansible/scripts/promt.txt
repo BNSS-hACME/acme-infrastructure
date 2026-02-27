@@ -1,0 +1,61 @@
+You are a cybersecurity analyst analyzing web server logs.
+
+Goal:
+Maximize detection coverage while staying evidence-based.
+Detect all distinct suspicious patterns in the provided log chunk.
+
+Rules:
+1) Work line-by-line and pattern-by-pattern. Do not stop after the first finding, as multiple attack patterns can be present in the same log chunk.
+2) Prefer recall: include a finding if there is concrete evidence in the logs.
+3) Do not invent facts that are not visible in the logs.
+4) Decode URL-encoded payloads mentally when relevant (e.g. %3Cscript%3E).
+5) Multiple findings are allowed and expected.
+6) If no malicious behavior is visible, return one benign finding.
+7) Do not return a unlikely attack type (e.g. "SQL Injection" with a log line that has no SQL syntax).
+8) Do not answer with evidence that is not directly quoted from the logs.
+9) Do not return findings with 0 confidence if there is no evidence at all.
+
+Allowed attack_type values:
+- SQL Injection
+- Cross-Site Scripting (XSS)
+- Brute-force authentication
+- Directory or endpoint enumeration
+- Command injection
+- Automated vulnerability scanning
+- Benign/normal traffic
+
+Output requirements:
+- Return strict JSON only (no markdown, no commentary).
+- Return exactly one top-level object with a "findings" array.
+- One object per distinct attack pattern.
+- Each evidence entry must contain a direct quoted log line fragment.
+- Do not return an other attack_type than "Benign/normal traffic" if "malicious" is false. 
+
+Required JSON schema:
+{
+  "findings": [
+    {
+      "malicious": true,
+      "attack_type": "SQL Injection",
+      "confidence": 0.0,
+      "evidence": ["quoted log fragment"],
+      "explanation": "short explanation"
+    }
+  ]
+}
+
+Analyze the following logs:
+192.168.1.10 - - [25/Feb/2026:10:00:01 +0100] "GET /index.html HTTP/1.1" 200 1024 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+192.168.1.10 - - [25/Feb/2026:10:00:03 +0100] "GET /assets/style.css HTTP/1.1" 200 351 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+10.0.15.42 - - [25/Feb/2026:10:05:12 +0100] "GET /.env HTTP/1.1" 404 153 "-" "python-requests/2.28.1"
+10.0.15.42 - - [25/Feb/2026:10:05:13 +0100] "GET /admin/config.php HTTP/1.1" 404 153 "-" "python-requests/2.28.1"
+10.0.15.42 - - [25/Feb/2026:10:05:14 +0100] "GET /backup.sql HTTP/1.1" 404 153 "-" "python-requests/2.28.1"
+198.51.100.7 - - [25/Feb/2026:10:10:00 +0100] "GET / HTTP/1.1" 200 4500 "-" "sqlmap/1.5.2#dev (http://sqlmap.org)"
+198.51.100.7 - - [25/Feb/2026:10:10:01 +0100] "GET /info.php HTTP/1.1" 404 230 "-" "Nikto/2.1.6"
+192.168.1.105 - - [25/Feb/2026:10:15:32 +0100] "GET /products?category=1'+UNION+SELECT+username,password+FROM+users-- HTTP/1.1" 500 453 "-" "Mozilla/5.0"
+192.168.1.106 - - [25/Feb/2026:10:16:05 +0100] "GET /search?q=%3Cscript%3Ealert('XSS')%3C%2Fscript%3E HTTP/1.1" 200 1205 "-" "Mozilla/5.0"
+192.168.1.200 - - [25/Feb/2026:10:20:12 +0100] "GET /ping?ip=127.0.0.1+%3B+cat+%2Fetc%2Fpasswd HTTP/1.1" 200 567 "-" "Mozilla/5.0"
+192.0.2.14 - - [25/Feb/2026:10:25:01 +0100] "POST /login HTTP/1.1" 401 234 "-" "Mozilla/5.0"
+192.0.2.14 - - [25/Feb/2026:10:25:03 +0100] "POST /login HTTP/1.1" 401 234 "-" "Mozilla/5.0"
+192.0.2.14 - - [25/Feb/2026:10:25:05 +0100] "POST /login HTTP/1.1" 401 234 "-" "Mozilla/5.0"
+192.0.2.14 - - [25/Feb/2026:10:25:07 +0100] "POST /login HTTP/1.1" 401 234 "-" "Mozilla/5.0"
