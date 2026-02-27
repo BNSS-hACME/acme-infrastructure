@@ -89,3 +89,12 @@
     group: freerad
     mode: "0640"
   notify: Restart FreeRADIUS
+
+- name: Write freeradius eap config
+  ansible.builtin.template:
+    src: eap.j2
+    dest: /etc/freeradius/3.0/mods-available/eap
+    owner: freerad
+    group: freerad
+    mode: "0640"
+  notify: Restart FreeRADIUS
