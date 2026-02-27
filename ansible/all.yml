@@ -1,0 +1,17 @@
+---
+# 1. Foundation: Run common tasks on all hosts first
+- import_playbook: common.yml
+
+# 2. Infrastructure Services: Security and Networking
+- import_playbook: dns.yml
+- import_playbook: step-ca.yml
+- import_playbook: vpn.yml
+
+# 3. Core Applications
+- import_playbook: keycloak.yml
+- import_playbook: nextcloud.yml
+
+# 4. Specialized / Lab Services
+- import_playbook: ai.yml
+- import_playbook: freeradius.yml
+- import_playbook: dvwa.yml
