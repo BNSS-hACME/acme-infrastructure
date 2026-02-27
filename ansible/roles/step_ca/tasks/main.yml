@@ -79,6 +79,26 @@
   environment:
     STEPPATH: /etc/step-ca
 
+- name: Configure Step CA to allow 10 year certificates
+  ansible.builtin.shell: |
+    python3 -c "
+    import json
+    with open('/etc/step-ca/config/ca.json', 'r') as f:
+        data = json.load(f)
+    if 'claims' not in data['authority']:
+        data['authority']['claims'] = {}
+    if data['authority']['claims'].get('maxTLSCertDuration') != '87600h':
+        data['authority']['claims']['maxTLSCertDuration'] = '87600h'
+        with open('/etc/step-ca/config/ca.json', 'w') as f:
+            json.dump(data, f, indent=4)
+        print('changed')
+    else:
+        print('unchanged')
+    "
+  register: step_ca_json_update
+  changed_when: "'changed' in step_ca_json_update.stdout"
+  notify: Restart step-ca
+
 - name: Fix ownership of step-ca directory recursively
   ansible.builtin.file:
     path: /etc/step-ca
