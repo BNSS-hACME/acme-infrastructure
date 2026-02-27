@@ -18,7 +18,11 @@
 - name: Update Suricata rules
   ansible.builtin.command: suricata-update
   register: ids_rules_update
+  failed_when: ids_rules_update.rc not in [0, 1]
   changed_when: "'No changes detected' not in ids_rules_update.stdout"
+  until: ids_rules_update.rc in [0, 1]
+  retries: 3
+  delay: 5
   when: ids_update_rules | bool
   notify: Restart IDS
 
