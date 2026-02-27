@@ -196,12 +196,8 @@
     $OCC config:app:set bruteforcesettings whitelist --value="$WL"
   changed_when: false
 
-- name: 13. Trust Step-CA Root Certificate (When available)
+- name: 13. Trust Step-CA Root Certificate
   ansible.builtin.shell: |
-    # The Step-CA root certificate will be injected via Docker Volume
-    # /usr/local/share/ca-certificates/
-    # This command tells the Nextcloud OS to trust any newly mounted
-    # CA certificates.
     docker exec -u 0 nextcloud-app update-ca-certificates
   changed_when: false
 
