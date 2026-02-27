@@ -2,4 +2,13 @@
 ids_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
 ids_mode: ids # detect-only first
 ids_home_net: "10.0.50.0/24"
-ids_alert_log: /var/log/ids/alerts.log
+ids_log_dir: /var/log/suricata
+ids_alert_log: fast.log
+ids_eve_log: eve.json
+
+ids_rule_path: /var/lib/suricata/rules
+ids_rule_files:
+  - suricata.rules
+
+ids_update_rules: true
+ids_install_evebox: false
