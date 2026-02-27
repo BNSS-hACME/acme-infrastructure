@@ -1,0 +1,8 @@
+---
+- name: Install and configure Keycloak
+  hosts: keycloak
+  become: true
+  roles:
+    - common
+    - docker
+    - keycloak

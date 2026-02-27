@@ -4,6 +4,10 @@ unbound_local_zones:
     type: static
 
 unbound_local_data:
+  - "router.server.acme. IN A 10.0.10.50"
   - "dns.server.acme. IN A 10.0.50.10"
   - "vpn.server.acme. IN A 10.0.50.11"
   - "cloud.server.acme. IN A 10.0.50.12"
+  - "auth.server.acme. IN A 10.0.50.13"
+  - "ai.server.acme. IN A 10.0.50.14"
+  - "dvwa.server.acme. IN A 10.0.50.15"

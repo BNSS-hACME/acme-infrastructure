@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  db:
+    container_name: nextcloud-db
+    image: mariadb:10.6
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    environment:
+      - MYSQL_ROOT_PASSWORD={{ vault_nextcloud_db_root_password }}
+      - MYSQL_PASSWORD={{ vault_nextcloud_db_password }}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+
+  app:
+    container_name: nextcloud-app
+    image: nextcloud:31-apache
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - MYSQL_PASSWORD={{ vault_nextcloud_db_password }}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=db
+
+    depends_on:
+      - db
+    # ----------------------------------------------------------------------------------
+    # STEP-CA INTEGRATION
+    # ----------------------------------------------------------------------------------
+    # Uncomment the volumes below once you have generated Step-CA certificates
+    # and placed them in /var/lib/nextcloud/certs/ and /var/lib/nextcloud/ca-certificates/
+    # ----------------------------------------------------------------------------------
+    # volumes:
+    #   - /var/lib/nextcloud/certs/tls.crt:/etc/ssl/certs/ssl-cert-snakeoil.pem
+    #   - /var/lib/nextcloud/certs/tls.key:/etc/ssl/private/ssl-cert-snakeoil.key
+    #   - /var/lib/nextcloud/ca-certificates/step-ca.crt:/usr/local/share/ca-certificates/step-ca.crt

@@ -2,7 +2,9 @@ router.server.acme
 vpn.server.acme
 dns.server.acme
 cloud.server.acme
+auth.server.acme
 dvwa.server.acme
+ai.server.acme
 
 [router]
 router.server.acme
@@ -13,9 +15,20 @@ vpn.server.acme
 [dns]
 dns.server.acme
 
+[keycloak]
+auth.server.acme
+
 [nextcloud]
 cloud.server.acme
+
+[ai]
+ai.server.acme
 
 [dvwa]
 dvwa.server.acme
 
+[freeradius]
+auth.server.acme
+
+[stepca]
+auth.server.acme

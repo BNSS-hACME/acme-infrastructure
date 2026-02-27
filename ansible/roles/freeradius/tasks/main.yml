@@ -1,0 +1,91 @@
+---
+- name: Install FreeRADIUS packages
+  ansible.builtin.apt:
+    name:
+      - freeradius
+      - freeradius-utils
+    state: present
+    update_cache: true
+
+- name: Ensure FreeRADIUS service is enabled and started
+  ansible.builtin.service:
+    name: freeradius
+    state: started
+    enabled: true
+- name: Ensure FreeRADIUS cert directory exists
+  ansible.builtin.file:
+    path: /etc/freeradius/certs
+    state: directory
+    owner: freerad
+    group: freerad
+    mode: "0750"
+
+- name: Wait for Step CA to be reachable
+  ansible.builtin.uri:
+    url: https://auth.server.acme:9000/health
+    method: GET
+    validate_certs: false
+  register: freeradius_ca_health
+  retries: 10
+  delay: 3
+  until: freeradius_ca_health.status == 200
+
+- name: Get CA root fingerprint
+  ansible.builtin.command: step certificate fingerprint /etc/step-ca/certs/root_ca.crt
+  register: freeradius_ca_fingerprint
+  changed_when: false
+
+- name: Bootstrap step CLI for root
+  ansible.builtin.command: >
+    step ca bootstrap
+    --ca-url https://auth.server.acme:9000
+    --fingerprint {{ freeradius_ca_fingerprint.stdout }}
+  args:
+    creates: /root/.step/config/defaults.json
+
+- name: Remove old RADIUS certificate if present
+  ansible.builtin.file:
+    path: /etc/freeradius/certs/radius.crt
+    state: absent
+
+- name: Remove old RADIUS key if present
+  ansible.builtin.file:
+    path: /etc/freeradius/certs/radius.key
+    state: absent
+
+- name: Generate RADIUS certificate
+  ansible.builtin.shell: |
+    step ca certificate radius.server.acme \
+      /etc/freeradius/certs/radius.crt \
+      /etc/freeradius/certs/radius.key \
+      --ca-url https://auth.server.acme:9000 \
+      --root /etc/step-ca/certs/root_ca.crt \
+      --password-file /etc/step-ca/password.txt
+  args:
+    creates: /etc/freeradius/certs/radius.crt
+  notify: Restart FreeRADIUS
+
+- name: Copy Root CA certificate
+  ansible.builtin.copy:
+    src: /etc/step-ca/certs/root_ca.crt
+    dest: /etc/freeradius/certs/root_ca.crt
+    remote_src: true
+    owner: freerad
+    group: freerad
+    mode: "0640"
+
+- name: Fix ownership of RADIUS certificates
+  ansible.builtin.file:
+    path: /etc/freeradius/certs
+    owner: freerad
+    group: freerad
+    recurse: true
+
+- name: Write freeradius client config
+  ansible.builtin.template:
+    src: client.conf.j2
+    dest: /etc/freeradius/3.0/clients.conf
+    owner: freerad
+    group: freerad
+    mode: "0640"
+  notify: Restart FreeRADIUS

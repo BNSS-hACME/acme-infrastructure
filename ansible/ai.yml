@@ -1,0 +1,7 @@
+---
+- name: Install and configure AI server
+  hosts: ai
+  become: true
+  roles:
+    - common
+    - ai

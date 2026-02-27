@@ -7,15 +7,15 @@
     dest: /etc/resolv.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Install unbound and dependencies
   ansible.builtin.apt:
     name:
       - unbound
-      - dnsutils  # Dig
+      - dnsutils # Dig
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: Ensure systemd-resolved is stopped, disabled and masked
   ansible.builtin.systemd:
@@ -30,15 +30,15 @@
     dest: /etc/unbound/unbound.conf.d/ansible.conf
     owner: root
     group: root
-    mode: '0644'
-    validate: 'unbound-checkconf %s'
-  notify: restart unbound
+    mode: "0644"
+    validate: "unbound-checkconf %s"
+  notify: Restart unbound
 
 - name: Enable and start unbound service
   ansible.builtin.systemd:
     name: unbound
-    enabled: yes
-    state: started
+    enabled: true
+    state: restarted
 
 - name: Configure /etc/resolv.conf to use local unbound
   ansible.builtin.copy:
@@ -48,5 +48,5 @@
     dest: /etc/resolv.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   when: unbound_set_local_resolver | default(true)
