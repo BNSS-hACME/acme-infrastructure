@@ -1,0 +1,80 @@
+# - name: Get public IPv4 address of VPN server
+#   ansible.builtin.command: curl -4 -s icanhazip.com
+#   register: _public_ip
+#   changed_when: false
+
+- name: Set public IP address of VPN server
+  ansible.builtin.set_fact:
+    _public_ip: "{{ ansible_facts.default_ipv4.address }}"
+
+- name: Create temp directory on VPN host
+  ansible.builtin.file:
+    path: "{{ _profile_tmp }}"
+    state: directory
+    mode: "0700"
+
+- name: Request client certificate from Step CA
+  ansible.builtin.command:
+    cmd: >-
+      step ca certificate {{ cn }}
+      {{ _profile_tmp }}/client.crt
+      {{ _profile_tmp }}/client.key
+      --ca-url {{ openvpn_stepca_url }}
+      --root /etc/openvpn/server/ca-parts/02-stepca-root.crt
+      --provisioner {{ openvpn_stepca_provisioner }}
+      --provisioner-password-file /etc/openvpn/server/provisioner-password.txt
+      --not-after 2160h
+      --force
+  changed_when: true
+
+- name: Read cert, key, CA bundle and tls-crypt key
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop:
+    - "{{ _profile_tmp }}/client.crt"
+    - "{{ _profile_tmp }}/client.key"
+    - /etc/openvpn/server/ca-bundle.crt
+    - /etc/openvpn/server/ta.key
+  register: _slurped
+
+- name: Write .ovpn profile on localhost
+  ansible.builtin.copy:
+    dest: "{{ cn }}.ovpn"
+    mode: "0600"
+    content: |
+      client
+      dev tun
+      proto udp
+      remote {{ _public_ip.stdout | trim }} 1194
+
+      <ca>
+      {{ _slurped.results[2].content | b64decode | trim }}
+      </ca>
+
+      <cert>
+      {{ _slurped.results[0].content | b64decode | trim }}
+      </cert>
+
+      <key>
+      {{ _slurped.results[1].content | b64decode | trim }}
+      </key>
+
+      <tls-crypt>
+      {{ _slurped.results[3].content | b64decode | trim }}
+      </tls-crypt>
+
+      data-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC
+      verb 3
+      persist-key
+      persist-tun
+  delegate_to: localhost
+  become: false
+
+- name: Remove temp directory from VPN host
+  ansible.builtin.file:
+    path: "{{ _profile_tmp }}"
+    state: absent
+
+- name: Done
+  ansible.builtin.debug:
+    msg: "Profile written to {{ cn }}.ovpn — import into your OpenVPN client."

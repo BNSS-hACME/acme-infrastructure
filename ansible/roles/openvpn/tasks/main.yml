@@ -3,20 +3,6 @@
   ansible.builtin.set_fact:
     openvpn_deb_arch: "{{ 'arm64' if ansible_facts.architecture == 'aarch64' else 'amd64' }}"
 
-# ---- TLS key material ----
-
-- name: Generate tls-crypt key
-  ansible.builtin.command:
-    cmd: openvpn --genkey tls-crypt /etc/openvpn/server/ta.key
-    creates: /etc/openvpn/server/ta.key
-  notify: Restart openvpn
-
-- name: Generate DH parameters (2048-bit)
-  ansible.builtin.command:
-    cmd: openssl dhparam -out /etc/openvpn/server/dh2048.pem 2048
-    creates: /etc/openvpn/server/dh2048.pem
-  notify: Restart openvpn
-
 # ---- CA bundle: NSS-VPKI RCA (always) + Step CA root (when available) ----
 # The bundle is assembled from per-cert files dropped into ca-parts/.
 # Prefix numbers control order; new trust anchors can be added by other roles.
@@ -40,12 +26,40 @@
 # The step-ca role is expected to set that variable and place the root cert
 # at stepca_root_cert_path on the CA host.
 
+- name: Check Step CA root cert exists on CA host
+  ansible.builtin.stat:
+    path: "{{ openvpn_stepca_root_cert_path }}"
+  delegate_to: "{{ stepca_host }}"
+  register: openvpn_stepca_root_stat
+  when: stepca_host is defined
+
+- name: Warn if Step CA root cert is not yet available
+  ansible.builtin.debug:
+    msg: >-
+      Step CA root cert not found on {{ stepca_host }}
+      ({{ openvpn_stepca_root_cert_path }}).
+      Run step-ca.yml first, then re-run this playbook to add it to the CA bundle.
+  when:
+    - stepca_host is defined
+    - not openvpn_stepca_root_stat.stat.exists
+
 - name: Fetch Step CA root certificate
   ansible.builtin.slurp:
     src: "{{ openvpn_stepca_root_cert_path }}"
   delegate_to: "{{ stepca_host }}"
   register: openvpn_stepca_root_cert
-  when: stepca_host is defined
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Fetch Step CA intermediate certificate
+  ansible.builtin.slurp:
+    src: "{{ openvpn_stepca_intermediate_cert_path }}"
+  delegate_to: "{{ stepca_host }}"
+  register: openvpn_stepca_intermediate_cert
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
 
 - name: Deploy Step CA root certificate into CA bundle parts
   ansible.builtin.copy:
@@ -55,6 +69,16 @@
   when:
     - stepca_host is defined
     - openvpn_stepca_root_cert.content is defined
+  notify: Restart openvpn
+
+- name: Deploy Step CA intermediate certificate into CA bundle parts
+  ansible.builtin.copy:
+    content: "{{ openvpn_stepca_intermediate_cert.content | b64decode }}"
+    dest: /etc/openvpn/server/ca-parts/03-stepca-intermediate.crt
+    mode: "0644"
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_intermediate_cert.content is defined
   notify: Restart openvpn
 
 - name: Assemble CA bundle from parts
@@ -124,6 +148,20 @@
     home: /var/lib/openvpn
     create_home: false
     state: present
+
+# ---- TLS key material ----
+
+- name: Generate tls-crypt key
+  ansible.builtin.command:
+    cmd: openvpn --genkey tls-crypt /etc/openvpn/server/ta.key
+    creates: /etc/openvpn/server/ta.key
+  notify: Restart openvpn
+
+- name: Generate DH parameters (2048-bit)
+  ansible.builtin.command:
+    cmd: openssl dhparam -out /etc/openvpn/server/dh2048.pem 2048
+    creates: /etc/openvpn/server/dh2048.pem
+  notify: Restart openvpn
 
 - name: Deploy management password file
   ansible.builtin.template:

@@ -15,6 +15,7 @@ openvpn_server_cn: "vpn.server.acme"
 # stepca_host: "ca.server.acme"
 openvpn_stepca_url: "https://auth.server.acme:9000"
 openvpn_stepca_root_cert_path: "/etc/step-ca/certs/root_ca.crt"
+openvpn_stepca_intermediate_cert_path: "/etc/step-ca/certs/intermediate_ca.crt"
 openvpn_stepca_provisioner: "admin"
 openvpn_step_cli_version: "0.29.0"
 
@@ -41,3 +42,5 @@ openvpn_auth_oauth2_bypass_common_names: []
 # verify-client-cert is set to required and management-client-auth is disabled.
 # Set to false to re-enable the Keycloak OAuth2 fallback for cert-less clients.
 openvpn_cert_only_auth: true
+
+openvpn_dns_server: "10.0.50.10"

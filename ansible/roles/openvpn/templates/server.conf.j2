@@ -87,10 +87,10 @@ ca ca-bundle.crt
 cert server.crt
 key server.key  # This file should be kept secret
 
-# Accept certs from Step CA (long-term) and NSS-VPKI PCA (pseudonyms).
-# Without 'optional', users without any cert cannot connect at all and the
-# Keycloak OAuth2 fallback (openvpn-auth-oauth2) never fires.
-verify-client-cert {{ 'required' if openvpn_cert_only_auth else 'optional' }}
+# 'require': cert-only mode — client must present a cert signed by the CA bundle
+#            (NSS-VPKI LTCA or internal Step CA). No Keycloak fallback.
+# 'optional': cert optional — falls back to Keycloak OAuth2 via openvpn-auth-oauth2.
+verify-client-cert {{ 'require' if openvpn_cert_only_auth else 'optional' }}
 
 # Diffie hellman parameters.
 # Generate your own with:
@@ -159,6 +159,12 @@ ifconfig-pool-persist /var/log/openvpn/ipp.txt
 # back to the OpenVPN server.
 ;push "route 192.168.10.0 255.255.255.0"
 ;push "route 192.168.20.0 255.255.255.0"
+
+# Push the route for the 10.0.0.0/8 network
+push "route 10.0.0.0 255.0.0.0"
+
+# Push the internal DNS server
+push "dhcp-option DNS {{ openvpn_dns_server }}"
 
 # To assign specific IP addresses to specific
 # clients or if a connecting client has a private
