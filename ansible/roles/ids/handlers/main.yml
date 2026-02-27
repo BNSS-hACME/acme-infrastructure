@@ -1,0 +1,5 @@
+---
+- name: Restart IDS
+  ansible.builtin.service:
+    name: suricata
+    state: restarted

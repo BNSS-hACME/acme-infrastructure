@@ -1,0 +1,73 @@
+---
+- name: Install suricata IDS
+  ansible.builtin.apt:
+    name:
+      - suricata
+      - suricata-update
+    state: present
+    update_cache: true
+
+- name: Deploy IDS config
+  ansible.builtin.template:
+    src: suricata.yaml.j2
+    dest: /etc/suricata/suricata.yaml
+    mode: "0644"
+    validate: "suricata -T -c %s -i {{ ids_interface }}"
+  notify: Restart IDS
+
+- name: Update Suricata rules
+  ansible.builtin.command: suricata-update
+  register: ids_rules_update
+  failed_when: ids_rules_update.rc not in [0, 1]
+  changed_when: "'No changes detected' not in ids_rules_update.stdout"
+  until: ids_rules_update.rc in [0, 1]
+  retries: 3
+  delay: 5
+  when: ids_update_rules | bool
+  notify: Restart IDS
+
+- name: Ensure keyring dir exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ids_install_evebox | bool
+
+- name: Download EveBox repository signing key
+  ansible.builtin.get_url:
+    url: https://evebox.org/files/evebox.asc
+    dest: /etc/apt/keyrings/evebox.asc
+    owner: root
+    group: root
+    mode: "0644"
+  when: ids_install_evebox | bool
+
+- name: Add EveBox APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/evebox.asc] https://evebox.org/files/debian stable main"
+    filename: evebox
+    state: present
+    update_cache: true
+  when: ids_install_evebox | bool
+
+- name: Install EveBox
+  ansible.builtin.apt:
+    name: evebox
+    state: present
+    update_cache: true
+  when: ids_install_evebox | bool
+
+- name: Ensure IDS service is enabled
+  ansible.builtin.service:
+    name: suricata
+    state: started
+    enabled: true
+
+- name: Ensure EveBox service is enabled
+  ansible.builtin.service:
+    name: evebox
+    state: started
+    enabled: true
+  when: ids_install_evebox | bool
