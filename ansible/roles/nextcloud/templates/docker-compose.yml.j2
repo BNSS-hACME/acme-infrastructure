@@ -30,13 +30,8 @@ services:
 
     depends_on:
       - db
-    # ----------------------------------------------------------------------------------
-    # STEP-CA INTEGRATION
-    # ----------------------------------------------------------------------------------
-    # Uncomment the volumes below once you have generated Step-CA certificates
-    # and placed them in /var/lib/nextcloud/certs/ and /var/lib/nextcloud/ca-certificates/
-    # ----------------------------------------------------------------------------------
-    # volumes:
-    #   - /var/lib/nextcloud/certs/tls.crt:/etc/ssl/certs/ssl-cert-snakeoil.pem
-    #   - /var/lib/nextcloud/certs/tls.key:/etc/ssl/private/ssl-cert-snakeoil.key
-    #   - /var/lib/nextcloud/ca-certificates/step-ca.crt:/usr/local/share/ca-certificates/step-ca.crt
+    
+    volumes:
+      - /var/lib/nextcloud/certs/tls.crt:/etc/ssl/certs/ssl-cert-snakeoil.pem
+      - /var/lib/nextcloud/certs/tls.key:/etc/ssl/private/ssl-cert-snakeoil.key
+      - /var/lib/nextcloud/ca-certificates/step-ca.crt:/usr/local/share/ca-certificates/step-ca.crt
