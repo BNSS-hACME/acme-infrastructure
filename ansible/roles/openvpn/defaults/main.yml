@@ -1,0 +1,46 @@
+---
+openvpn_server_name: "server"
+
+# VPN pool handed to connecting clients (design: 10.0.11.0/24)
+openvpn_vpn_subnet: "10.0.11.0"
+openvpn_vpn_netmask: "255.255.255.0"
+
+# CN used when requesting the server certificate from Step CA
+openvpn_server_cn: "vpn.server.acme"
+
+# ---- Step CA integration ----
+# Set stepca_host to the Ansible inventory hostname of the Step CA VM once
+# the step-ca role is in place.  Until then, cert-related tasks are skipped
+# and the CA bundle will contain only the NSS-VPKI RCA.
+# stepca_host: "ca.server.acme"
+openvpn_stepca_url: "https://auth.server.acme:9000"
+openvpn_stepca_root_cert_path: "/etc/step-ca/certs/root_ca.crt"
+openvpn_stepca_intermediate_cert_path: "/etc/step-ca/certs/intermediate_ca.crt"
+openvpn_stepca_provisioner: "admin"
+openvpn_step_cli_version: "0.29.0"
+
+# ---- x-PKI / NSS-VPKI ----
+# Public RCA certificate from the KTH NSS-VPKI.  Fetched at provision time;
+# no secrets involved — this is a public trust anchor.
+openvpn_nss_vpki_rca_url: "https://raw.githubusercontent.com/mohammad-khodaei/nss-vpki/master/Certificates/rca_x509_cert.pem"
+
+# ---- openvpn-auth-oauth2 ----
+openvpn_auth_oauth2_version: "1.27.0"
+openvpn_auth_oauth2_http_listen: ":9090"
+openvpn_auth_oauth2_http_baseurl: "http://{{ ansible_facts.default_ipv4.address }}:9090"
+openvpn_auth_oauth2_issuer: "https://auth.server.acme/realms/acme"
+openvpn_auth_oauth2_provider: "generic"
+openvpn_auth_oauth2_mgmt_port: 7505
+openvpn_auth_oauth2_auth_token_lifetime: 28800
+# Common names that skip the Keycloak OAuth2 step entirely.
+# Add pseudonym CNs here if you want travel users to get full privacy
+# (no Keycloak login during VPN connect).  Leave empty to always require
+# Keycloak — the pseudonym cert still authenticates the TLS channel.
+openvpn_auth_oauth2_bypass_common_names: []
+
+# When true: clients must present a valid certificate (no Keycloak/OAuth2).
+# verify-client-cert is set to required and management-client-auth is disabled.
+# Set to false to re-enable the Keycloak OAuth2 fallback for cert-less clients.
+openvpn_cert_only_auth: true
+
+openvpn_dns_server: "10.0.50.10"

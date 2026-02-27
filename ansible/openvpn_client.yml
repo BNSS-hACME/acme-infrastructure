@@ -1,0 +1,39 @@
+---
+# Generate a VPN client profile (.ovpn) via the internal Step CA.
+#
+# The step CLI and provisioner password are already present on the VPN host
+# (installed by the openvpn role when stepca_host is defined), so this
+# playbook runs there and fetches the finished profile back locally.
+#
+# Usage:
+#   ansible-playbook vpn-client-profile.yml
+#
+# The CN identifies the device. Use something like:
+#   alice-laptop, bob-phone, carol-workstation
+#
+# Output: <cn>.ovpn  (on the localhost machine, ready to import)
+
+- name: Generate VPN client profile
+  hosts: vpn
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - roles/openvpn/defaults/main.yml
+
+  vars_prompt:
+    - name: cn
+      prompt: "Client name (identifies the device, e.g. alice-laptop)"
+      private: false
+
+  vars:
+    _profile_tmp: "/tmp/vpn-profile-{{ cn }}"
+
+  pre_tasks:
+    - name: Require cn variable
+      ansible.builtin.fail:
+        msg: "Client name cannot be empty."
+      when: cn == ""
+
+  roles:
+    - openvpn_client
