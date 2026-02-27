@@ -45,21 +45,21 @@
   ansible.builtin.slurp:
     src: /tmp/cloud_server_acme.crt
   delegate_to: auth.server.acme
-  register: slurp_nextcloud_cert
+  register: nextcloud_slurp_cert
   when: not nextcloud_cert_stat.stat.exists
 
 - name: Read generated key from CA
   ansible.builtin.slurp:
     src: /tmp/cloud_server_acme.key
   delegate_to: auth.server.acme
-  register: slurp_nextcloud_key
+  register: nextcloud_slurp_key
   when: not nextcloud_cert_stat.stat.exists
 
 - name: Read Step CA root certificate
   ansible.builtin.slurp:
     src: /etc/step-ca/certs/root_ca.crt
   delegate_to: auth.server.acme
-  register: slurp_stepca_root
+  register: nextcloud_slurp_stepca_root
   when: not nextcloud_cert_stat.stat.exists
 
 - name: Clean up temporary files on CA
@@ -74,7 +74,7 @@
 
 - name: Write Nextcloud certificate to destination
   ansible.builtin.copy:
-    content: "{{ slurp_nextcloud_cert['content'] | b64decode }}"
+    content: "{{ nextcloud_slurp_cert['content'] | b64decode }}"
     dest: /var/lib/nextcloud/certs/tls.crt
     owner: "33"
     group: "33"
@@ -83,7 +83,7 @@
 
 - name: Write Nextcloud key to destination
   ansible.builtin.copy:
-    content: "{{ slurp_nextcloud_key['content'] | b64decode }}"
+    content: "{{ nextcloud_slurp_key['content'] | b64decode }}"
     dest: /var/lib/nextcloud/certs/tls.key
     owner: "33"
     group: "33"
@@ -92,7 +92,7 @@
 
 - name: Write Step CA root certificate to destination
   ansible.builtin.copy:
-    content: "{{ slurp_stepca_root['content'] | b64decode }}"
+    content: "{{ nextcloud_slurp_stepca_root['content'] | b64decode }}"
     dest: /var/lib/nextcloud/ca-certificates/step-ca.crt
     owner: "33"
     group: "33"
@@ -117,7 +117,10 @@
 
 - name: 6. Check if Nextcloud is already installed
   ansible.builtin.shell: |
+    set -o pipefail
     docker exec -u 33 nextcloud-app php occ status | grep "installed: true" || true
+  args:
+    executable: /bin/bash
   register: nextcloud_status
   failed_when: false
   changed_when: false
