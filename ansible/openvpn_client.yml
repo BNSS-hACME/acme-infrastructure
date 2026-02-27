@@ -36,4 +36,4 @@
       when: cn == ""
 
   roles:
-    - openvpn-client
+    - openvpn_client
