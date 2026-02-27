@@ -1,17 +1,27 @@
 ---
-# 1. Foundation: Run common tasks on all hosts first
-- import_playbook: common.yml
+- name: Common Configuration
+  import_playbook: common.yml
 
-# 2. Infrastructure Services: Security and Networking
-- import_playbook: dns.yml
-- import_playbook: step-ca.yml
-- import_playbook: vpn.yml
+- name: DNS resolver
+  import_playbook: dns.yml
 
-# 3. Core Applications
-- import_playbook: keycloak.yml
-- import_playbook: nextcloud.yml
+- name: Certificate Authority
+  import_playbook: step-ca.yml
 
-# 4. Specialized / Lab Services
-- import_playbook: ai.yml
-- import_playbook: freeradius.yml
-- import_playbook: dvwa.yml
+- name: Identity Management
+  import_playbook: keycloak.yml
+
+- name: VPN
+  import_playbook: vpn.yml
+
+- name: Network Authentication
+  import_playbook: freeradius.yml
+
+- name: Cloud Storage
+  import_playbook: nextcloud.yml
+
+- name: AI Services
+  import_playbook: ai.yml
+
+- name: Vulnerable Web App (Lab)
+  import_playbook: dvwa.yml
