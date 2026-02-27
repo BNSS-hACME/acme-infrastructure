@@ -27,7 +27,7 @@
       private: false
 
   vars:
-    _profile_tmp: "/tmp/vpn-profile-{{ cn }}"
+    openvpn_client_profile_tmp: "/tmp/vpn-profile-{{ cn }}"
 
   pre_tasks:
     - name: Require cn variable
