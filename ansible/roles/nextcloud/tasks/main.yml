@@ -21,14 +21,83 @@
     - /var/lib/nextcloud/ca-certificates
 
 # ---------------------------------------------------------
-# STEP-CA INTEGRATION PLACEHOLDER
+# STEP-CA INTEGRATION
 # ---------------------------------------------------------
-# Future Step-CA integration should drop the certificates here:
-# /var/lib/nextcloud/certs/tls.crt
-# /var/lib/nextcloud/certs/tls.key
-# And the Root CA certificate here:
-# /var/lib/nextcloud/ca-certificates/step-ca.crt
-# With permissions matching the directory (owner/group 33 for Nextcloud)
+- name: Check if Nextcloud certificate already exists
+  ansible.builtin.stat:
+    path: /var/lib/nextcloud/certs/tls.crt
+  register: nextcloud_cert_stat
+
+- name: Generate Nextcloud Certificate on CA (Delegate)
+  ansible.builtin.shell: |
+    step ca certificate cloud.server.acme \
+      /tmp/cloud_server_acme.crt \
+      /tmp/cloud_server_acme.key \
+      --ca-url https://auth.server.acme:9000 \
+      --root /etc/step-ca/certs/root_ca.crt \
+      --not-after=87600h \
+      --password-file /etc/step-ca/password.txt
+  delegate_to: auth.server.acme
+  when: not nextcloud_cert_stat.stat.exists
+  changed_when: true
+
+- name: Read generated certificate from CA
+  ansible.builtin.slurp:
+    src: /tmp/cloud_server_acme.crt
+  delegate_to: auth.server.acme
+  register: nextcloud_slurp_cert
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Read generated key from CA
+  ansible.builtin.slurp:
+    src: /tmp/cloud_server_acme.key
+  delegate_to: auth.server.acme
+  register: nextcloud_slurp_key
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Read Step CA root certificate
+  ansible.builtin.slurp:
+    src: /etc/step-ca/certs/root_ca.crt
+  delegate_to: auth.server.acme
+  register: nextcloud_slurp_stepca_root
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Clean up temporary files on CA
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  delegate_to: auth.server.acme
+  loop:
+    - /tmp/cloud_server_acme.crt
+    - /tmp/cloud_server_acme.key
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Write Nextcloud certificate to destination
+  ansible.builtin.copy:
+    content: "{{ nextcloud_slurp_cert['content'] | b64decode }}"
+    dest: /var/lib/nextcloud/certs/tls.crt
+    owner: "33"
+    group: "33"
+    mode: "0644"
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Write Nextcloud key to destination
+  ansible.builtin.copy:
+    content: "{{ nextcloud_slurp_key['content'] | b64decode }}"
+    dest: /var/lib/nextcloud/certs/tls.key
+    owner: "33"
+    group: "33"
+    mode: "0600"
+  when: not nextcloud_cert_stat.stat.exists
+
+- name: Write Step CA root certificate to destination
+  ansible.builtin.copy:
+    content: "{{ nextcloud_slurp_stepca_root['content'] | b64decode }}"
+    dest: /var/lib/nextcloud/ca-certificates/step-ca.crt
+    owner: "33"
+    group: "33"
+    mode: "0644"
+  when: not nextcloud_cert_stat.stat.exists
 # ---------------------------------------------------------
 
 - name: 3. Copy Docker Compose to VM
@@ -47,8 +116,11 @@
     seconds: 10
 
 - name: 6. Check if Nextcloud is already installed
-  ansible.builtin.command:
-    cmd: docker exec -u 33 nextcloud-app php occ status --output=json
+  ansible.builtin.shell: |
+    set -o pipefail
+    docker exec -u 33 nextcloud-app php occ status | grep "installed: true" || true
+  args:
+    executable: /bin/bash
   register: nextcloud_status
   failed_when: false
   changed_when: false
@@ -62,9 +134,7 @@
       --database-host "db" \
       --admin-user "admin" \
       --admin-pass "{{ vault_nextcloud_admin_password }}"
-  when: >-
-    not ((nextcloud_status.stdout | default('{}') | from_json).installed |
-    default(false))
+  when: "'installed: true' not in nextcloud_status.stdout"
   register: nextcloud_occ_install
   until: nextcloud_occ_install.rc == 0
   retries: 10
@@ -129,12 +199,8 @@
     $OCC config:app:set bruteforcesettings whitelist --value="$WL"
   changed_when: false
 
-- name: 13. Trust Step-CA Root Certificate (When available)
+- name: 13. Trust Step-CA Root Certificate
   ansible.builtin.shell: |
-    # The Step-CA root certificate will be injected via Docker Volume
-    # /usr/local/share/ca-certificates/
-    # This command tells the Nextcloud OS to trust any newly mounted
-    # CA certificates.
     docker exec -u 0 nextcloud-app update-ca-certificates
   changed_when: false
 

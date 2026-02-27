@@ -429,7 +429,7 @@
   ],
   "defaultRole": {
     "id": "855ca61f-3256-4913-94f4-1871e51a02a4",
-    "name": "default-roles-acme",
+    "name": "default-roles-acme ",
     "description": "${role_default-roles}",
     "composite": true,
     "clientRole": false,
@@ -504,13 +504,13 @@
       "clientId": "account",
       "name": "${client_account}",
       "rootUrl": "${authBaseUrl}",
-      "baseUrl": "/realms/acme-realm/account/",
+      "baseUrl": "/realms/acme%20/account/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "/realms/acme-realm/account/*"
+        "/realms/acme%20/account/*"
       ],
       "webOrigins": [],
       "notBefore": 0,
@@ -551,13 +551,13 @@
       "clientId": "account-console",
       "name": "${client_account-console}",
       "rootUrl": "${authBaseUrl}",
-      "baseUrl": "/realms/acme-realm/account/",
+      "baseUrl": "/realms/acme%20/account/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "/realms/acme-realm/account/*"
+        "/realms/acme%20/account/*"
       ],
       "webOrigins": [],
       "notBefore": 0,
@@ -685,7 +685,7 @@
         "address",
         "phone",
         "organization",
-        "offline_access",
+        "offline_accefmyss",
         "microprofile-jwt"
       ]
     },
@@ -695,15 +695,15 @@
       "name": "nextcloud-client",
       "secret": "{{ vault_nextcloud_oidc_secret }}",
       "description": "",
-      "rootUrl": "https://nextcloud.acme",
-      "adminUrl": "https://nextcloud.acme",
-      "baseUrl": "https://nextcloud.acme/",
+      "rootUrl": "https://cloud.server.acme",
+      "adminUrl": "https://cloud.server.acme",
+      "baseUrl": "https://cloud.server.acme/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "https://nextcloud.acme/*"
+        "https://cloud.server.acme/*"
       ],
       "webOrigins": [
         "+"
@@ -792,13 +792,13 @@
       "clientId": "security-admin-console",
       "name": "${client_security-admin-console}",
       "rootUrl": "${authAdminUrl}",
-      "baseUrl": "/admin/acme-realm/console/",
+      "baseUrl": "/admin/acme%20/console/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "/admin/acme-realm/console/*"
+        "/admin/acme%20/console/*"
       ],
       "webOrigins": [
         "+"

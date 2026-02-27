@@ -89,13 +89,21 @@ Vagrant.configure("2") do |config|
       sysctl -w net.ipv4.ip_forward=1
       echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/90-router.conf
 
-      # enp0s9 = external (bridged), enp0s10 = internal (acme-internal)
-      iptables -t nat -C POSTROUTING -s 10.0.50.0/24 -o enp0s9 -j MASQUERADE 2>/dev/null || \
-        iptables -t nat -A POSTROUTING -s 10.0.50.0/24 -o enp0s9 -j MASQUERADE
-      iptables -C FORWARD -i enp0s10 -o enp0s9 -j ACCEPT 2>/dev/null || \
-        iptables -A FORWARD -i enp0s10 -o enp0s9 -j ACCEPT
-      iptables -C FORWARD -i enp0s9 -o enp0s10 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
-        iptables -A FORWARD -i enp0s9 -o enp0s10 -m state --state RELATED,ESTABLISHED -j ACCEPT
+      # Detect interfaces dynamically based on IP subnets
+      EXT_IF=$(ip -o -4 route show to default | head -n1 | awk '{print $5}')
+      # Fallback to looking for the bridge network if Vagrant already removed default
+      if [ -z "$EXT_IF" ]; then
+        EXT_IF=$(ip -o -4 route show to exact 10.0.10.0/24 | head -n1 | awk '{print $3}')
+      fi
+      INT_IF=$(ip -o -4 route show to exact 10.0.50.0/24 | head -n1 | awk '{print $3}')
+
+      # Setup NAT rules using the dynamically discovered interfaces
+      iptables -t nat -C POSTROUTING -s 10.0.50.0/24 -o $EXT_IF -j MASQUERADE 2>/dev/null || \
+        iptables -t nat -A POSTROUTING -s 10.0.50.0/24 -o $EXT_IF -j MASQUERADE
+      iptables -C FORWARD -i $INT_IF -o $EXT_IF -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -i $INT_IF -o $EXT_IF -j ACCEPT
+      iptables -C FORWARD -i $EXT_IF -o $INT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -i $EXT_IF -o $INT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT
 
       # Ensure iptables rules persist across reboots.
       export DEBIAN_FRONTEND=noninteractive
@@ -109,9 +117,9 @@ Vagrant.configure("2") do |config|
         iptables-save > /etc/iptables/rules.v4
       fi
       # Replace Vagrant NAT default route with physical LAN gateway.
-      # 10.0.2.0/24 stays reachable as a directly-connected route on enp0s8 — Vagrant SSH unaffected.
+      # 10.0.2.0/24 stays reachable as a directly-connected route on the vagrant interface.
       ip route del default via 10.0.2.2 2>/dev/null || true
-      ip route add default via 10.0.10.1 dev enp0s9 2>/dev/null || true
+      ip route add default via 10.0.10.1 dev $EXT_IF 2>/dev/null || true
       ip route del 10.0.10.1 via 10.0.2.2 dev enp0s8 2>/dev/null || true
     SHELL
 
@@ -133,11 +141,17 @@ Vagrant.configure("2") do |config|
         virtualbox__intnet: "acme-internal"
 
       # Replace Vagrant NAT default route with router.server.acme.
-      # 10.0.2.0/24 stays reachable as a directly-connected route on enp0s8 — Vagrant SSH unaffected.
+      # 10.0.2.0/24 stays reachable as a directly-connected route on the Vagrant management interface — SSH unaffected.
       node.vm.provision "shell", name: "routing", run: "always", inline: <<~SHELL
+        # Wait for the internal network interface to come up
+        sleep 5
+        INT_IF=$(ip -o -4 route show to exact 10.0.50.0/24 | head -n1 | awk '{print $3}')
+        # Fallback to enp0s8 if detection fails (common in VirtualBox)
+        if [ -z "$INT_IF" ]; then
+          INT_IF="enp0s9"
+        fi
         ip route del default via 10.0.2.2 2>/dev/null || true
-        ip route add default via 10.0.50.1 dev enp0s9 2>/dev/null || true
-        ip route del 10.0.10.1 via 10.0.2.2 dev enp0s8 2>/dev/null || true
+        ip route add default via 10.0.50.1 dev $INT_IF 2>/dev/null || true
       SHELL
 
       if opts[:cloud_init]

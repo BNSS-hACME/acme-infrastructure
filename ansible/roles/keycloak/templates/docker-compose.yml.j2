@@ -4,12 +4,23 @@ services:
     container_name: keycloak-app
     image: quay.io/keycloak/keycloak:26.0
     restart: always
-    command: start-dev --import-realm
+    entrypoint: "/bin/bash"
+    command:
+      - "-c"
+      - |
+        if [ ! -f /opt/keycloak/data/h2/keycloakdb.mv.db ]; then
+          echo 'First boot: Importing realm...';
+          /opt/keycloak/bin/kc.sh start-dev --import-realm;
+        else
+          echo 'Subsequent boot: Starting normally...';
+          /opt/keycloak/bin/kc.sh start-dev;
+        fi
     ports:
       - "8443:8443"
     volumes:
       - /var/lib/keycloak/certs:/etc/x509/https
       - /opt/keycloak/import:/opt/keycloak/data/import
+      - keycloak_data:/opt/keycloak/data
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD={{ vault_keycloak_admin_password }}
@@ -18,3 +29,6 @@ services:
       - KC_HTTP_ENABLED=false
       - KC_HTTPS_CERTIFICATE_FILE=/etc/x509/https/tls.crt
       - KC_HTTPS_CERTIFICATE_KEY_FILE=/etc/x509/https/tls.key
+
+volumes:
+  keycloak_data:
