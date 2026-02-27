@@ -6,6 +6,7 @@
     owner: root
     group: root
     mode: "0755"
+  when: "'dns' not in group_names"
 
 - name: Configure systemd-resolved to use acme dns server
   ansible.builtin.copy:
@@ -17,6 +18,7 @@
     group: root
     mode: "0644"
   notify: Restart systemd-resolved
+  when: "'dns' not in group_names"
 
 - name: Ensure /etc/resolv.conf points to systemd-resolved stub
   ansible.builtin.file:
@@ -24,3 +26,4 @@
     dest: /etc/resolv.conf
     state: link
     force: true
+  when: "'dns' not in group_names"
