@@ -1,0 +1,7 @@
+---
+- name: Setup Secure Static Web Server
+  hosts: secure
+  become: yes
+  roles:
+    - common
+    - secure

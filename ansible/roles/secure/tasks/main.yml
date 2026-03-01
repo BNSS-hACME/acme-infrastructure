@@ -1,0 +1,120 @@
+---
+- name: 1. Install Apache and OpenIDC module
+  ansible.builtin.apt:
+    name:
+      - apache2
+      - libapache2-mod-auth-openidc
+    state: present
+    update_cache: yes
+
+- name: 2. Create Certificate Directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: "0755"
+  loop:
+    - /etc/apache2/ssl
+
+# ---------------------------------------------------------
+# STEP-CA INTEGRATION
+# ---------------------------------------------------------
+- name: 3. Check if Secure certificate already exists
+  ansible.builtin.stat:
+    path: /etc/apache2/ssl/tls.crt
+  register: secure_cert_stat
+
+- name: 4. Generate Secure Certificate on CA (Delegate)
+  ansible.builtin.shell: |
+    step ca certificate secure.server.acme \
+      /tmp/secure_server_acme.crt \
+      /tmp/secure_server_acme.key \
+      --ca-url https://auth.server.acme:9000 \
+      --root /etc/step-ca/certs/root_ca.crt \
+      --not-after=87600h \
+      --password-file /etc/step-ca/password.txt
+  delegate_to: auth.server.acme
+  when: not secure_cert_stat.stat.exists
+  changed_when: true
+
+- name: 5. Read generated certificate from CA
+  ansible.builtin.slurp:
+    src: /tmp/secure_server_acme.crt
+  delegate_to: auth.server.acme
+  register: secure_slurp_cert
+  when: not secure_cert_stat.stat.exists
+
+- name: 6. Read generated key from CA
+  ansible.builtin.slurp:
+    src: /tmp/secure_server_acme.key
+  delegate_to: auth.server.acme
+  register: secure_slurp_key
+  when: not secure_cert_stat.stat.exists
+
+- name: 6b. Read Step CA root certificate
+  ansible.builtin.slurp:
+    src: /etc/step-ca/certs/root_ca.crt
+  delegate_to: auth.server.acme
+  register: secure_slurp_stepca_root
+  when: not secure_cert_stat.stat.exists
+
+- name: 7. Clean up temporary files on CA
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  delegate_to: auth.server.acme
+  loop:
+    - /tmp/secure_server_acme.crt
+    - /tmp/secure_server_acme.key
+  when: not secure_cert_stat.stat.exists
+
+- name: 8. Write Secure certificate to destination
+  ansible.builtin.copy:
+    content: "{{ secure_slurp_cert['content'] | b64decode }}"
+    dest: /etc/apache2/ssl/tls.crt
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when: not secure_cert_stat.stat.exists
+
+- name: 9. Write Secure key to destination
+  ansible.builtin.copy:
+    content: "{{ secure_slurp_key['content'] | b64decode }}"
+    dest: /etc/apache2/ssl/tls.key
+    owner: "root"
+    group: "ssl-cert"
+    mode: "0640"
+  when: not secure_cert_stat.stat.exists
+
+- name: 9b. Write Step CA root certificate to destination
+  ansible.builtin.copy:
+    content: "{{ secure_slurp_stepca_root['content'] | b64decode }}"
+    dest: /etc/apache2/ssl/step-ca.crt
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when: not secure_cert_stat.stat.exists
+# ---------------------------------------------------------
+
+- name: 10. Deploy dynamic index.cgi
+  ansible.builtin.copy:
+    src: index.cgi
+    dest: /var/www/html/index.cgi
+    mode: "0755"
+
+- name: 11. Deploy Apache VirtualHost configuration
+  ansible.builtin.template:
+    src: secure.conf.j2
+    dest: /etc/apache2/sites-available/secure-site.conf
+  notify: Restart Apache
+
+- name: 12. Enable required Apache modules and secure site
+  ansible.builtin.shell: |
+    a2enmod ssl
+    a2enmod headers
+    a2enmod auth_openidc
+    a2enmod cgid
+    a2dissite 000-default
+    a2ensite secure-site.conf
+  notify: Restart Apache
