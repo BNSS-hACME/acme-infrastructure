@@ -12,3 +12,14 @@ ids_rule_files:
 
 ids_update_rules: true
 ids_install_evebox: false
+ids_suricata_group: suricata
+ids_evebox_config_dir: /etc/evebox
+ids_evebox_config_path: /etc/evebox/evebox.yaml
+ids_evebox_data_dir: /var/lib/evebox
+ids_evebox_host: 127.0.0.1
+ids_evebox_port: 5636
+ids_evebox_auth_required: false
+ids_evebox_tls_enabled: false
+ids_evebox_retention_days: 7
+ids_evebox_input_paths:
+  - "{{ ids_log_dir }}/{{ ids_eve_log }}"

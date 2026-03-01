@@ -7,6 +7,29 @@
     state: present
     update_cache: true
 
+- name: Ensure IDS directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ ids_log_dir }}"
+      mode: "0755"
+    - path: "{{ ids_rule_path }}"
+      mode: "0755"
+
+- name: Ensure Suricata rule files exist for first run validation
+  ansible.builtin.copy:
+    content: ""
+    dest: "{{ ids_rule_path }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  loop: "{{ ids_rule_files }}"
+
 - name: Deploy IDS config
   ansible.builtin.template:
     src: suricata.yaml.j2
@@ -37,7 +60,7 @@
 
 - name: Download EveBox repository signing key
   ansible.builtin.get_url:
-    url: https://evebox.org/files/evebox.asc
+    url: https://evebox.org/files/GPG-KEY-evebox
     dest: /etc/apt/keyrings/evebox.asc
     owner: root
     group: root
@@ -58,6 +81,60 @@
     state: present
     update_cache: true
   when: ids_install_evebox | bool
+
+- name: Ensure EveBox directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ ids_evebox_config_dir }}"
+      owner: root
+      group: root
+      mode: "0755"
+    - path: "{{ ids_evebox_data_dir }}"
+      owner: evebox
+      group: evebox
+      mode: "0750"
+  when: ids_install_evebox | bool
+
+- name: Deploy EveBox config
+  ansible.builtin.template:
+    src: evebox.yaml.j2
+    dest: "{{ ids_evebox_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: ids_install_evebox | bool
+  notify: Restart EveBox
+
+- name: Configure EveBox service options
+  ansible.builtin.copy:
+    dest: /etc/default/evebox
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      EVEBOX_OPTS="-c {{ ids_evebox_config_path }} --host {{ ids_evebox_host }} --port {{ ids_evebox_port }}"
+  when: ids_install_evebox | bool
+  notify: Restart EveBox
+
+- name: Ensure Suricata group exists for EveBox access
+  ansible.builtin.group:
+    name: "{{ ids_suricata_group }}"
+    system: true
+    state: present
+  when: ids_install_evebox | bool
+
+- name: Allow EveBox to read Suricata output
+  ansible.builtin.user:
+    name: evebox
+    groups: "{{ ids_suricata_group }}"
+    append: true
+  when: ids_install_evebox | bool
+  notify: Restart EveBox
 
 - name: Ensure IDS service is enabled
   ansible.builtin.service:
