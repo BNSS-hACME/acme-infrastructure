@@ -20,7 +20,7 @@ MACHINES = {
     cloud_init: <<~YAML,
       package_update: true
       packages:
-        - wireguard
+        - openvpn
         - iptables
     YAML
   },
@@ -38,6 +38,17 @@ MACHINES = {
     cpus: 2,
     cloud_init: <<~YAML,
       package_update: true
+    YAML
+  },
+  "ai.server.acme" => {
+    ip: "10.0.50.14",
+    memory: 2048,
+    cpus: 2,
+    cloud_init: <<~YAML,
+      package_update: true
+      packages:
+        - curl
+        - ca-certificates
     YAML
   },
   "dvwa.server.acme" => {

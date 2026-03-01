@@ -38,7 +38,7 @@
   ansible.builtin.systemd:
     name: unbound
     enabled: true
-    state: started
+    state: restarted
 
 - name: Configure /etc/resolv.conf to use local unbound
   ansible.builtin.copy:

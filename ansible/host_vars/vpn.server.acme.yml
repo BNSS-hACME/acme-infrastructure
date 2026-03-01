@@ -1,1 +1,4 @@
 ---
+# Step CA lives on auth.server.acme (see [stepca] group in inventory).
+# The fingerprint is fetched dynamically from the CA host at play time.
+stepca_host: auth.server.acme
