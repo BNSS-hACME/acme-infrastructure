@@ -1,0 +1,218 @@
+---
+- name: Determine deb architecture
+  ansible.builtin.set_fact:
+    openvpn_deb_arch: "{{ 'arm64' if ansible_facts.architecture == 'aarch64' else 'amd64' }}"
+
+# ---- CA bundle: NSS-VPKI RCA (always) + Step CA root (when available) ----
+# The bundle is assembled from per-cert files dropped into ca-parts/.
+# Prefix numbers control order; new trust anchors can be added by other roles.
+
+- name: Create CA bundle parts directory
+  ansible.builtin.file:
+    path: /etc/openvpn/server/ca-parts
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download NSS-VPKI RCA certificate
+  ansible.builtin.get_url:
+    url: "{{ openvpn_nss_vpki_rca_url }}"
+    dest: /etc/openvpn/server/ca-parts/01-nss-vpki-rca.crt
+    mode: "0644"
+  notify: Restart openvpn
+
+# Step CA tasks are gated on stepca_host being defined.
+# The step-ca role is expected to set that variable and place the root cert
+# at stepca_root_cert_path on the CA host.
+
+- name: Check Step CA root cert exists on CA host
+  ansible.builtin.stat:
+    path: "{{ openvpn_stepca_root_cert_path }}"
+  delegate_to: "{{ stepca_host }}"
+  register: openvpn_stepca_root_stat
+  when: stepca_host is defined
+
+- name: Warn if Step CA root cert is not yet available
+  ansible.builtin.debug:
+    msg: >-
+      Step CA root cert not found on {{ stepca_host }}
+      ({{ openvpn_stepca_root_cert_path }}).
+      Run step-ca.yml first, then re-run this playbook to add it to the CA bundle.
+  when:
+    - stepca_host is defined
+    - not openvpn_stepca_root_stat.stat.exists
+
+- name: Fetch Step CA root certificate
+  ansible.builtin.slurp:
+    src: "{{ openvpn_stepca_root_cert_path }}"
+  delegate_to: "{{ stepca_host }}"
+  register: openvpn_stepca_root_cert
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Fetch Step CA intermediate certificate
+  ansible.builtin.slurp:
+    src: "{{ openvpn_stepca_intermediate_cert_path }}"
+  delegate_to: "{{ stepca_host }}"
+  register: openvpn_stepca_intermediate_cert
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Deploy Step CA root certificate into CA bundle parts
+  ansible.builtin.copy:
+    content: "{{ openvpn_stepca_root_cert.content | b64decode }}"
+    dest: /etc/openvpn/server/ca-parts/02-stepca-root.crt
+    mode: "0644"
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_cert.content is defined
+  notify: Restart openvpn
+
+- name: Deploy Step CA intermediate certificate into CA bundle parts
+  ansible.builtin.copy:
+    content: "{{ openvpn_stepca_intermediate_cert.content | b64decode }}"
+    dest: /etc/openvpn/server/ca-parts/03-stepca-intermediate.crt
+    mode: "0644"
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_intermediate_cert.content is defined
+  notify: Restart openvpn
+
+- name: Assemble CA bundle from parts
+  ansible.builtin.assemble:
+    src: /etc/openvpn/server/ca-parts
+    dest: /etc/openvpn/server/ca-bundle.crt
+    mode: "0644"
+  notify: Restart openvpn
+
+# ---- Server certificate from Step CA ----
+
+- name: Install step CLI
+  ansible.builtin.apt:
+    deb: >-
+      https://dl.smallstep.com/gh-release/cli/gh-release-header/v{{
+      openvpn_step_cli_version }}/step-cli_{{ openvpn_step_cli_version
+      }}-1_{{ openvpn_deb_arch }}.deb
+    state: present
+  when: stepca_host is defined
+
+- name: Deploy Step CA provisioner password file
+  ansible.builtin.copy:
+    # The admin provisioner password is the same key used to initialise step-ca
+    # (step ca init --password-file).  Re-use it from the CA host's vars rather
+    # than duplicating the secret.
+    content: "{{ hostvars[stepca_host]['step_ca_password'] }}"
+    dest: /etc/openvpn/server/provisioner-password.txt
+    owner: root
+    group: root
+    mode: "0600"
+  when: stepca_host is defined
+
+- name: Request OpenVPN server certificate from Step CA
+  ansible.builtin.command:
+    cmd: >
+      step ca certificate {{ openvpn_server_cn }}
+      /etc/openvpn/server/server.crt
+      /etc/openvpn/server/server.key
+      --ca-url {{ openvpn_stepca_url }}
+      --root /etc/openvpn/server/ca-parts/02-stepca-root.crt
+      --provisioner {{ openvpn_stepca_provisioner }}
+      --provisioner-password-file /etc/openvpn/server/provisioner-password.txt
+      --not-after 2160h
+    creates: /etc/openvpn/server/server.crt
+  when: stepca_host is defined
+  notify: Restart openvpn
+
+# ---- OpenVPN server ----
+
+- name: Install OpenVPN
+  ansible.builtin.apt:
+    name: openvpn
+    state: present
+
+- name: Create openvpn system group
+  ansible.builtin.group:
+    name: openvpn
+    system: true
+    state: present
+
+- name: Create openvpn system user
+  ansible.builtin.user:
+    name: openvpn
+    group: openvpn
+    system: true
+    shell: /usr/sbin/nologin
+    home: /var/lib/openvpn
+    create_home: false
+    state: present
+
+# ---- TLS key material ----
+
+- name: Generate tls-crypt key
+  ansible.builtin.command:
+    cmd: openvpn --genkey tls-crypt /etc/openvpn/server/ta.key
+    creates: /etc/openvpn/server/ta.key
+  notify: Restart openvpn
+
+- name: Generate DH parameters (2048-bit)
+  ansible.builtin.command:
+    cmd: openssl dhparam -out /etc/openvpn/server/dh2048.pem 2048
+    creates: /etc/openvpn/server/dh2048.pem
+  notify: Restart openvpn
+
+- name: Deploy management password file
+  ansible.builtin.template:
+    src: management-password.txt.j2
+    dest: /etc/openvpn/server/management-password.txt
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart openvpn
+
+- name: Configure OpenVPN
+  ansible.builtin.template:
+    src: server.conf.j2
+    dest: /etc/openvpn/server/server.conf
+    mode: "0644"
+  notify: Restart openvpn
+
+- name: Enable and start openvpn-server@{{ openvpn_server_name }}
+  ansible.builtin.systemd:
+    name: openvpn-server@{{ openvpn_server_name }}
+    enabled: true
+    state: started
+
+# - name: Enable IP forwarding
+#  ansible.builtin.sysctl:
+#    name: net.ipv4.ip_forward
+#    value: "1"
+#    state: present
+#    sysctl_file: /etc/sysctl.d/99-openvpn.conf
+
+# ---- openvpn-auth-oauth2 ----
+
+- name: Install openvpn-auth-oauth2
+  ansible.builtin.apt:
+    deb: >-
+      https://github.com/jkroepke/openvpn-auth-oauth2/releases/download/v{{
+      openvpn_auth_oauth2_version }}/openvpn-auth-oauth2_{{
+      openvpn_auth_oauth2_version }}_linux_{{ openvpn_deb_arch }}.deb
+    state: present
+
+- name: Deploy openvpn-auth-oauth2 config
+  ansible.builtin.template:
+    src: openvpn-auth-oauth2.yaml.j2
+    dest: /etc/openvpn-auth-oauth2/config.yaml
+    owner: root
+    group: openvpn-auth-oauth2
+    mode: "0640"
+  notify: Restart openvpn-auth-oauth2
+
+- name: Enable and start openvpn-auth-oauth2
+  ansible.builtin.systemd:
+    name: openvpn-auth-oauth2
+    enabled: true
+    state: started

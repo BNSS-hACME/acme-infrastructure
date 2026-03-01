@@ -20,7 +20,7 @@ MACHINES = {
     cloud_init: <<~YAML,
       package_update: true
       packages:
-        - wireguard
+        - openvpn
         - iptables
     YAML
   },
