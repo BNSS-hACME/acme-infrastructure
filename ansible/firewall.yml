@@ -1,0 +1,12 @@
+---
+- name: Install and configure Firewall
+  hosts:
+    - stepca
+    - vpn
+    - freeradius
+    - keycloak
+
+  become: true
+  roles:
+    - common
+    - firewall
