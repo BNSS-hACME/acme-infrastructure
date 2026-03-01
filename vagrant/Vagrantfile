@@ -89,13 +89,15 @@ Vagrant.configure("2") do |config|
       sysctl -w net.ipv4.ip_forward=1
       echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/90-router.conf
 
-      # Detect interfaces dynamically based on IP subnets
-      EXT_IF=$(ip -o -4 route show to default | head -n1 | awk '{print $5}')
-      # Fallback to looking for the bridge network if Vagrant already removed default
-      if [ -z "$EXT_IF" ]; then
-        EXT_IF=$(ip -o -4 route show to exact 10.0.10.0/24 | head -n1 | awk '{print $3}')
-      fi
-      INT_IF=$(ip -o -4 route show to exact 10.0.50.0/24 | head -n1 | awk '{print $3}')
+     # Find External (Bridged) - Expected: enp0s8
+      EXT_IF=$(ip -o -4 route show to 10.0.10.0/24 | awk '{print $3}' | head -n1)
+      [ -z "$EXT_IF" ] && EXT_IF="enp0s8"
+
+      # Find Internal (Host-only) - Expected: enp0s9
+      INT_IF=$(ip -o -4 route show to 10.0.50.0/24 | awk '{print $3}' | head -n1)
+      [ -z "$INT_IF" ] && INT_IF="enp0s9"
+
+      echo "Routing via External: $EXT_IF and Internal: $INT_IF"
 
       # Setup NAT rules using the dynamically discovered interfaces
       iptables -t nat -C POSTROUTING -s 10.0.50.0/24 -o $EXT_IF -j MASQUERADE 2>/dev/null || \
