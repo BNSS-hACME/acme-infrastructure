@@ -32,3 +32,6 @@ auth.server.acme
 
 [stepca]
 auth.server.acme
+
+[secure]
+secure.server.acme
