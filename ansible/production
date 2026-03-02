@@ -5,6 +5,8 @@ cloud.server.acme
 auth.server.acme
 dvwa.server.acme
 ai.server.acme
+rpi1.server.acme
+rpi2.server.acme
 
 [router]
 router.server.acme
@@ -32,3 +34,7 @@ auth.server.acme
 
 [stepca]
 auth.server.acme
+
+[raspberrypi]
+rpi1.server.acme
+rpi2.server.acme
