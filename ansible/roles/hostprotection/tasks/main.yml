@@ -88,6 +88,6 @@
 - name: Disable SSL
   ansible.builtin.command: a2dissite default-ssl
   register: hostprotection_a2dissite
-  changed_when: hostprotection_a2dissite.rc == 0
+  changed_when: hostprotection_a2dissite.rc == 0 and ('already disabled' not in (hostprotection_a2dissite.stdout | default('')))
   failed_when: false
   notify: Restart Apache
