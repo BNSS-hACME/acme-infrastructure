@@ -119,18 +119,18 @@
     - headers
     - auth_openidc
     - cgid
-  register: a2enmod_result
-  changed_when: "'already enabled' not in a2enmod_result.stdout"
+  register: secure_a2enmod_result
+  changed_when: "'already enabled' not in secure_a2enmod_result.stdout"
   notify: Restart Apache
 
 - name: 13. Disable default site
   ansible.builtin.command: a2dissite 000-default
-  register: disable_default
-  changed_when: "'Site 000-default disabled' in disable_default.stdout"
+  register: secure_disable_default
+  changed_when: "'Site 000-default disabled' in secure_disable_default.stdout"
   notify: Restart Apache
 
 - name: 14. Enable secure site
   ansible.builtin.command: a2ensite secure-site.conf
-  register: enable_secure
-  changed_when: "'Enabling site secure-site' in enable_secure.stdout"
+  register: secure_enable_secure
+  changed_when: "'Enabling site secure-site' in secure_enable_secure.stdout"
   notify: Restart Apache
