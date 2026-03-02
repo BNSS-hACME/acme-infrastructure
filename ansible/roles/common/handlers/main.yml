@@ -3,3 +3,8 @@
   ansible.builtin.service:
     name: systemd-resolved
     state: restarted
+
+- name: Restart SSH service
+  ansible.builtin.service:
+    name: "{{ 'sshd' if ansible_facts.os_family in ['RedHat', 'Suse'] else 'ssh' }}"
+    state: reloaded
