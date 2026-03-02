@@ -1,4 +1,11 @@
 ---
+- name: Validate IDS mode value
+  ansible.builtin.assert:
+    that:
+      - ids_mode | lower in ['ids', 'ips']
+    fail_msg: "ids_mode must be either 'ids' or 'ips'."
+    quiet: true
+
 - name: Install suricata IDS
   ansible.builtin.apt:
     name:

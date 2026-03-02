@@ -1,5 +1,6 @@
 %YAML 1.1
 ---
+{% set ids_mode_normalized = (ids_mode | default('ids') | lower) %}
 vars:
   address-groups:
     HOME_NET: "[{{ ids_home_net }}]"
@@ -43,6 +44,9 @@ af-packet:
     cluster-id: 99
     cluster-type: cluster_flow
     defrag: yes
+
+stream:
+  inline: {{ 'yes' if ids_mode_normalized == 'ips' else 'no' }}
 
 app-layer:
   protocols:
