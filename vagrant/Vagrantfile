@@ -58,6 +58,14 @@ MACHINES = {
     cloud_init: <<~YAML,
       package_update: true
     YAML
+  },
+  "secure.server.acme" => {
+    ip: "10.0.50.20",
+    memory: 1024,
+    cpus: 1,
+    cloud_init: <<~YAML,
+      package_update: true
+    YAML
   }
 }
 
