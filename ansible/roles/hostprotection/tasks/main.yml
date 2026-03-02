@@ -32,7 +32,7 @@
     state: present
     update_cache: true
 
-- name: Enable modsecurity and CRS
+- name: Enable ModSecurity Apache module
   ansible.builtin.command: a2enmod security2
   args:
     creates: /etc/apache2/mods-enabled/security2.load
