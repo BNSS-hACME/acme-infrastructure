@@ -1,1 +1,0 @@
-Listen {{ hostprotection_apache_modsec_listen_ip }}:{{ hostprotection_apache_modsec_listen_port }}
