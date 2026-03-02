@@ -27,3 +27,12 @@
     state: link
     force: true
   when: "'dns' not in group_names"
+
+- name: Disable SSH password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication\s+'
+    line: PasswordAuthentication no
+    state: present
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart SSH service
