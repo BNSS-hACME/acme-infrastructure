@@ -1,6 +1,4 @@
 ---
-
----
 wifi_cert_cert_dir: "/etc/freeradius/3.0/certs"
 wifi_cert_export_dir: "/home/vagrant/wifi_exports"
 wifi_cert_pkcs12_password: !vault |
