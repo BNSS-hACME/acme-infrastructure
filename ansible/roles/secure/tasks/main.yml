@@ -113,14 +113,14 @@
   notify: Restart Apache
 
 - name: 12. Enable required Apache modules
-  community.general.apache2_module:
-    state: present
-    name: "{{ item }}"
+  ansible.builtin.command: "a2enmod {{ item }}"
   loop:
     - ssl
     - headers
     - auth_openidc
     - cgid
+  register: a2enmod_result
+  changed_when: "'already enabled' not in a2enmod_result.stdout"
   notify: Restart Apache
 
 - name: 13. Disable default site
