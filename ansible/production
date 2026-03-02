@@ -39,4 +39,4 @@ secure.server.acme
 [oidc]
 auth.server.acme
 secure.server.acme
-nextcloud.server.acme
+cloud.server.acme
