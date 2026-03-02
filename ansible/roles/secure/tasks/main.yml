@@ -5,7 +5,7 @@
       - apache2
       - libapache2-mod-auth-openidc
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: 2. Create Certificate Directories
   ansible.builtin.file:
