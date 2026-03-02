@@ -7,20 +7,21 @@
 
 -A INPUT -i lo -j ACCEPT
 
-{% for rule in global_iptables_rules %}
-{% if rule.proto == 'icmp' %}
--A INPUT -p icmp -j ACCEPT -m comment --comment "{{ rule.comment }}"
+-A INPUT -p icmp -j ACCEPT -m comment --comment "Allow Ping"
+-A INPUT -p tcp --dport 22 -j ACCEPT -m comment --comment "Allow SSH globally"
+
+{% if (firewall | default({}))['ports'] is defined %}
+{% for port in firewall.ports %}
+{% if (firewall | default({}))['allowed_subnets'] is defined %}
+{% for subnet in firewall.allowed_subnets %}
+-A INPUT -p tcp --dport {{ port }} -s {{ subnet }} -j ACCEPT -m comment --comment "Allow TCP {{ port }} from {{ subnet }}"
+-A INPUT -p udp --dport {{ port }} -s {{ subnet }} -j ACCEPT -m comment --comment "Allow UDP {{ port }} from {{ subnet }}"
+{% endfor %}
 {% else %}
--A INPUT -p {{ rule.proto }} --dport {{ rule.port }} -j ACCEPT -m comment --comment "{{ rule.comment }}"
+-A INPUT -p tcp --dport {{ port }} -j ACCEPT -m comment --comment "Allow TCP {{ port }} globally"
+-A INPUT -p udp --dport {{ port }} -j ACCEPT -m comment --comment "Allow UDP {{ port }} globally"
 {% endif %}
 {% endfor %}
-
-{% for rule in host_iptables_rules | default([]) %}
--A INPUT -p {{ rule.proto }} --dport {{ rule.port }} -j ACCEPT -m comment --comment "{{ rule.comment }}"
-{% endfor %}
-
-{% for net in trusted_source_nets | default([]) %}
--A INPUT -s {{ net }} -j ACCEPT
-{% endfor %}
+{% endif %}
 
 COMMIT
