@@ -1,0 +1,5 @@
+- name: Deploy LLM pipeline
+  hosts: ai
+  become: true
+  roles:
+    - llm_pipeline
