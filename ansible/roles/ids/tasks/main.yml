@@ -6,6 +6,20 @@
     fail_msg: "ids_mode must be either 'ids' or 'ips'."
     quiet: true
 
+- name: Validate IDS interface list
+  ansible.builtin.assert:
+    that:
+      - ids_interfaces | length > 0
+    fail_msg: "ids_interfaces must contain at least one interface."
+    quiet: true
+
+- name: Validate IDS home network list
+  ansible.builtin.assert:
+    that:
+      - ids_home_nets | length > 0
+    fail_msg: "ids_home_nets must contain at least one subnet."
+    quiet: true
+
 - name: Install suricata IDS
   ansible.builtin.apt:
     name:
@@ -42,7 +56,7 @@
     src: suricata.yaml.j2
     dest: /etc/suricata/suricata.yaml
     mode: "0644"
-    validate: "suricata -T -c %s -i {{ ids_interface }}"
+    validate: "suricata -T -c %s"
   notify: Restart IDS
 
 - name: Update Suricata rules

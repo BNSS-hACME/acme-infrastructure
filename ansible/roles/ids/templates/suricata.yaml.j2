@@ -1,9 +1,10 @@
 %YAML 1.1
 ---
 {% set ids_mode_normalized = (ids_mode | default('ids') | lower) %}
+{% set ids_home_nets_normalized = ids_home_nets | default([ids_home_net]) %}
 vars:
   address-groups:
-    HOME_NET: "[{{ ids_home_net }}]"
+    HOME_NET: "[{{ ids_home_nets_normalized | join(',') }}]"
     EXTERNAL_NET: "!$HOME_NET"
     HTTP_SERVERS: "$HOME_NET"
     SMTP_SERVERS: "$HOME_NET"
@@ -40,10 +41,12 @@ rule-files:
 {% endfor %}
 
 af-packet:
-  - interface: {{ ids_interface }}
-    cluster-id: 99
+{% for ids_monitored_interface in ids_interfaces %}
+  - interface: {{ ids_monitored_interface }}
+    cluster-id: {{ 99 + loop.index0 }}
     cluster-type: cluster_flow
     defrag: yes
+{% endfor %}
 
 stream:
   inline: {{ 'yes' if ids_mode_normalized == 'ips' else 'no' }}

@@ -1,7 +1,11 @@
 ---
 ids_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
+ids_interfaces:
+  - "{{ ids_interface }}"
 ids_mode: ids # detect-only first
 ids_home_net: "10.0.50.0/24"
+ids_home_nets:
+  - "{{ ids_home_net }}"
 ids_log_dir: /var/log/suricata
 ids_alert_log: fast.log
 ids_eve_log: eve.json
