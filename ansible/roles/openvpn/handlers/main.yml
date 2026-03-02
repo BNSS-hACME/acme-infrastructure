@@ -1,4 +1,9 @@
 ---
+- name: Apply sysctl
+  ansible.builtin.command:
+    cmd: sysctl -p /etc/sysctl.d/99-openvpn.conf
+  changed_when: false
+
 - name: Restart openvpn
   ansible.builtin.systemd:
     name: openvpn-server@{{ openvpn_server_name }}

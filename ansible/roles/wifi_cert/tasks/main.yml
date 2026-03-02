@@ -1,0 +1,60 @@
+---
+- name: Ensure export directory exists
+  ansible.builtin.file:
+    path: "{{ wifi_cert_export_dir }}"
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: '0755'
+
+- name: Create temporary step password file
+  ansible.builtin.copy:
+    content: "{{ step_ca_password }}"
+    dest: "/tmp/step_pass.txt"
+    mode: '0600'
+
+- name: Generate client certificate
+  ansible.builtin.command: >
+    step ca certificate {{ cert_name }}
+    {{ wifi_cert_cert_dir }}/{{ cert_name }}.crt
+    {{ wifi_cert_cert_dir }}/{{ cert_name }}.key
+    --provisioner-password-file /tmp/step_pass.txt
+  args:
+    creates: "{{ wifi_cert_cert_dir }}/{{ cert_name }}.crt"
+
+- name: Delete temporary step password file
+  ansible.builtin.file:
+    path: "/tmp/step_pass.txt"
+    state: absent
+
+- name: Set permissions on certificate
+  ansible.builtin.file:
+    path: "{{ wifi_cert_cert_dir }}/{{ cert_name }}.crt"
+    owner: root
+    group: freerad
+    mode: '0640'
+
+- name: Set permissions on private key
+  ansible.builtin.file:
+    path: "{{ wifi_cert_cert_dir }}/{{ cert_name }}.key"
+    owner: root
+    group: freerad
+    mode: '0640'
+
+- name: Export PKCS12 bundle
+  ansible.builtin.command: >
+    openssl pkcs12 -export
+    -in {{ wifi_cert_cert_dir }}/{{ cert_name }}.crt
+    -inkey {{ wifi_cert_cert_dir }}/{{ cert_name }}.key
+    -certfile /etc/step-ca/certs/root_ca.crt
+    -out {{ wifi_cert_export_dir }}/{{ cert_name }}.p12
+    -passout pass:{{ wifi_cert_pkcs12_password }}
+  args:
+    creates: "{{ wifi_cert_export_dir }}/{{ cert_name }}.p12"
+
+- name: Set ownership on exported PKCS12 file
+  ansible.builtin.file:
+    path: "{{ wifi_cert_export_dir }}/{{ cert_name }}.p12"
+    owner: vagrant
+    group: vagrant
+    mode: '0644'

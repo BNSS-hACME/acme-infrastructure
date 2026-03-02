@@ -3,6 +3,7 @@ vpn.server.acme
 dns.server.acme
 cloud.server.acme
 auth.server.acme
+secure.server.acme
 dvwa.server.acme
 ai.server.acme
 
@@ -32,3 +33,11 @@ auth.server.acme
 
 [stepca]
 auth.server.acme
+
+[secure]
+secure.server.acme
+
+[oidc]
+auth.server.acme
+secure.server.acme
+cloud.server.acme

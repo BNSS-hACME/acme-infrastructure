@@ -25,3 +25,6 @@
 
 - name: Vulnerable Web App (Lab)
   import_playbook: dvwa.yml
+
+- name: Secure Web App
+  import_playbook: secure.yml
