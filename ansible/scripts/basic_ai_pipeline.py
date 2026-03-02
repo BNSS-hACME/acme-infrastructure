@@ -409,7 +409,7 @@ def main():
         with open(args.alert_file, "a", encoding="utf-8") as handle:
             for finding in malicious_findings:
                 handle.write(json.dumps(finding, ensure_ascii=False) + "\n")
-        print(f"🚨 Saved {len(malicious_findings)} alert(s) to: {args.alert_file}")
+        print(f"Saved {len(malicious_findings)} alert(s) to: {args.alert_file}")
 
     return 0
 
