@@ -212,7 +212,8 @@
   ansible.builtin.shell: |
     docker exec -u 0 nextcloud-app a2enmod ssl
     docker exec -u 0 nextcloud-app a2enmod headers
-    docker exec -u 0 nextcloud-app bash -c 'echo "Header always set Strict-Transport-Security \"max-age=15552000; includeSubDomains\"" > /etc/apache2/conf-available/hsts.conf'
+    docker exec -u 0 nextcloud-app bash -c \
+      'echo "Header always set Strict-Transport-Security \"max-age=15552000; includeSubDomains\"" > /etc/apache2/conf-available/hsts.conf'
     docker exec -u 0 nextcloud-app a2enconf hsts
     docker exec -u 0 nextcloud-app a2ensite default-ssl
     docker restart nextcloud-app
