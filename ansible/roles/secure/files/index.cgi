@@ -13,10 +13,17 @@ echo "</head><body>"
 echo "<div class='container'>"
 echo "<h1>Secret ACME Infrastructure</h1>"
 
+# Basic function to escape HTML entities
+escape_html() {
+    sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g' <<< "$1"
+}
+
 if [ -n "$OIDC_CLAIM_preferred_username" ]; then
-    echo "<p>Welcome, <span class='user'>${OIDC_CLAIM_preferred_username}</span>!</p>"
+    CLEAN_USER=$(escape_html "$OIDC_CLAIM_preferred_username")
+    echo "<p>Welcome, <span class='user'>${CLEAN_USER}</span>!</p>"
 elif [ -n "$REMOTE_USER" ]; then
-    echo "<p>Welcome, <span class='user'>${REMOTE_USER}</span>!</p>"
+    CLEAN_USER=$(escape_html "$REMOTE_USER")
+    echo "<p>Welcome, <span class='user'>${CLEAN_USER}</span>!</p>"
 else
     echo "<p>Authenticated successfully.</p>"
 fi

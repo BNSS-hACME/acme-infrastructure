@@ -120,7 +120,12 @@
     - auth_openidc
     - cgid
   register: secure_a2enmod_result
-  changed_when: "'already enabled' not in secure_a2enmod_result.stdout"
+  changed_when: >
+    secure_a2enmod_result.results
+    | map(attribute='stdout')
+    | reject('search', 'already enabled')
+    | list
+    | length > 0
   notify: Restart Apache
 
 - name: 13. Disable default site
