@@ -36,3 +36,4 @@
     state: present
     validate: /usr/sbin/sshd -t -f %s
   notify: Restart SSH service
+  when: common_disable_ssh_password_auth | default(false)
