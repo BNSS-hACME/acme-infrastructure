@@ -1,2 +1,0 @@
-hostprotection_apache_modsec_listen_ip: "127.0.0.1"
-hostprotection_apache_modsec_listen_port: 8081

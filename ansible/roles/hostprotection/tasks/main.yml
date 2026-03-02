@@ -29,6 +29,7 @@
     name:
       - libapache2-mod-security2
       - modsecurity-crs
+      - apache2
     state: present
     update_cache: true
 
@@ -70,19 +71,11 @@
   when: hostprotection_modsecurity_active_conf.stat.exists or hostprotection_modsecurity_recommended_conf.stat.exists
   notify: Restart Apache
 
-- name: Deploy Apache config for OWASP CRS includes
-  ansible.builtin.template:
-    src: modsecurity-crs.conf.j2
-    dest: /etc/apache2/conf-available/modsecurity-crs.conf
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Restart Apache
-
-- name: Enable OWASP CRS Apache config
-  ansible.builtin.command: a2enconf modsecurity-crs
-  args:
-    creates: /etc/apache2/conf-enabled/modsecurity-crs.conf
+- name: Disable custom OWASP CRS Apache config when present
+  ansible.builtin.command: a2disconf modsecurity-crs
+  register: hostprotection_a2disconf_modsecurity_crs
+  changed_when: hostprotection_a2disconf_modsecurity_crs.rc == 0 and ('already disabled' not in (hostprotection_a2disconf_modsecurity_crs.stdout | default('')))
+  failed_when: false
   notify: Restart Apache
 
 - name: Disable SSL
