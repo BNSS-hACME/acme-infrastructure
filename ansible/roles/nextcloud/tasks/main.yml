@@ -199,8 +199,8 @@
     $OCC config:app:set core shareapi_allow_links --value=no
     $OCC config:app:set core shareapi_allow_mail_notification --value=no
 
-    WL='["10.0.50.0/24", "10.0.10.0/24", "10.0.20.0/24", "10.0.11.0/24"]'
-    $OCC config:app:set bruteforcesettings whitelist --value="$WL"
+    # WL='["10.0.50.0/24", "10.0.10.0/24", "10.0.20.0/24", "10.0.11.0/24"]'
+    # $OCC config:app:set bruteforcesettings whitelist --value="$WL"
   changed_when: false
 
 - name: 13. Trust Step-CA Root Certificate
@@ -211,6 +211,9 @@
 - name: 14. Finalize Secure Web Server State
   ansible.builtin.shell: |
     docker exec -u 0 nextcloud-app a2enmod ssl
+    docker exec -u 0 nextcloud-app a2enmod headers
+    docker exec -u 0 nextcloud-app bash -c 'echo "Header always set Strict-Transport-Security \"max-age=15552000; includeSubDomains\"" > /etc/apache2/conf-available/hsts.conf'
+    docker exec -u 0 nextcloud-app a2enconf hsts
     docker exec -u 0 nextcloud-app a2ensite default-ssl
     docker restart nextcloud-app
   failed_when: false
