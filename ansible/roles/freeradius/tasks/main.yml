@@ -106,12 +106,11 @@
     mode: "0640"
 
 - name: Set permissions on CA bundle
-  file:
+  ansible.builtin.file:
     path: /etc/freeradius/3.0/certs/ca_bundle.pem
     owner: freerad
     group: freerad
     mode: "0640"
-    
 - name: Write freeradius eap config
   ansible.builtin.template:
     src: eap.j2
@@ -121,7 +120,7 @@
     mode: "0640"
   notify: Restart FreeRADIUS
 
-#- name: Configure FreeRADIUS TLS (step-ca integration)
+# - name: Configure FreeRADIUS TLS (step-ca integration)
 #  blockinfile:
 #    path: /etc/freeradius/3.0/mods-enabled/eap
 #    marker: "# {mark} ANSIBLE TLS CONFIG"
