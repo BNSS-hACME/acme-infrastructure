@@ -1,0 +1,4 @@
+global_nftables_rules:
+  - proto: tcp
+    port: 22
+    comment: "SSH"

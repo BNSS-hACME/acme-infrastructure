@@ -1,0 +1,48 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        # Accept loopback traffic
+        iif "lo" accept
+
+        # Accept established and related connections
+        ct state established,related accept
+
+        # Global Rules
+{% for rule in global_nftables_rules | default([]) %}
+{% if rule.proto == 'icmp' %}
+        ip protocol icmp accept comment "{{ rule.comment }}"
+        ip6 nexthdr icmpv6 accept comment "{{ rule.comment }}"
+{% else %}
+        {{ rule.proto }} dport {{ rule.port }} accept comment "{{ rule.comment }}"
+{% endif %}
+{% endfor %}
+
+        # Host Rules
+{% for rule in host_nftables_rules | default([]) %}
+{% if rule.proto == 'icmp' %}
+        ip protocol icmp accept comment "{{ rule.comment }}"
+        ip6 nexthdr icmpv6 accept comment "{{ rule.comment }}"
+{% else %}
+        {{ rule.proto }} dport {{ rule.port }} accept comment "{{ rule.comment }}"
+{% endif %}
+{% endfor %}
+
+        # Trusted source networks
+{% for net in trusted_source_nets | default([]) %}
+        ip saddr {{ net }} accept
+{% endfor %}
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+    }
+
+    chain output {
+        type filter hook output priority filter; policy accept;
+    }
+}

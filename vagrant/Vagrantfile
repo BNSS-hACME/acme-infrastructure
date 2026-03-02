@@ -21,7 +21,7 @@ MACHINES = {
       package_update: true
       packages:
         - openvpn
-        - iptables
+        - nftables
     YAML
   },
   "cloud.server.acme" => {
@@ -108,24 +108,32 @@ Vagrant.configure("2") do |config|
       echo "Routing via External: $EXT_IF and Internal: $INT_IF"
 
       # Setup NAT rules using the dynamically discovered interfaces
-      iptables -t nat -C POSTROUTING -s 10.0.50.0/24 -o $EXT_IF -j MASQUERADE 2>/dev/null || \
-        iptables -t nat -A POSTROUTING -s 10.0.50.0/24 -o $EXT_IF -j MASQUERADE
-      iptables -C FORWARD -i $INT_IF -o $EXT_IF -j ACCEPT 2>/dev/null || \
-        iptables -A FORWARD -i $INT_IF -o $EXT_IF -j ACCEPT
-      iptables -C FORWARD -i $EXT_IF -o $INT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
-        iptables -A FORWARD -i $EXT_IF -o $INT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT
-
-      # Ensure iptables rules persist across reboots.
       export DEBIAN_FRONTEND=noninteractive
       apt-get update -y
-      apt-get install -y iptables-persistent
-      # Save current IPv4 rules so they are restored on boot.
-      if command -v netfilter-persistent >/dev/null 2>&1; then
-        netfilter-persistent save
-      else
-        mkdir -p /etc/iptables
-        iptables-save > /etc/iptables/rules.v4
-      fi
+      apt-get install -y nftables
+
+      cat << EOF > /etc/nftables.conf
+#!/usr/sbin/nft -f
+flush ruleset
+
+table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        ip saddr 10.0.50.0/24 oifname "$EXT_IF" masquerade
+    }
+}
+
+table ip filter {
+    chain forward {
+        type filter hook forward priority filter; policy accept;
+        iifname "$INT_IF" oifname "$EXT_IF" accept
+        iifname "$EXT_IF" oifname "$INT_IF" ct state related,established accept
+    }
+}
+EOF
+
+      systemctl enable nftables
+      systemctl restart nftables
       # Replace Vagrant NAT default route with physical LAN gateway.
       # 10.0.2.0/24 stays reachable as a directly-connected route on the vagrant interface.
       ip route del default via 10.0.2.2 2>/dev/null || true
