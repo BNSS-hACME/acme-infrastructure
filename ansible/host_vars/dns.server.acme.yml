@@ -11,6 +11,7 @@ unbound_local_data:
   - "auth.server.acme. IN A 10.0.50.13"
   - "ai.server.acme. IN A 10.0.50.14"
   - "dvwa.server.acme. IN A 10.0.50.15"
+  - "secure.server.acme. IN A 10.0.50.20"
 
 firewall:
   ports:

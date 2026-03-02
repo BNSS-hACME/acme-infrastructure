@@ -479,6 +479,53 @@
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
   "webAuthnPolicyPasswordlessExtraOrigins": [],
+  "users" : [ {
+    "id" : "16507e30-212d-4456-8c92-0697ecb49c6e",
+    "username" : "alice",
+    "firstName" : "alice",
+    "lastName" : "alice",
+    "email" : "alice@acme",
+    "emailVerified" : false,
+    "createdTimestamp" : 1772388748465,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "90e2f6a5-556c-498d-bd14-574595f1933c",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1772388760114,
+      "secretData" : "{\"value\":\"SI6+A2w2Wplxj8bAOUB6yS3LCLq20XtD5IRA3W2fa9I=\",\"salt\":\"8jxTSn7XdhMiZa+k2TN5Aw==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":5,\"algorithm\":\"argon2\",\"additionalParameters\":{\"hashLength\":[\"32\"],\"memory\":[\"7168\"],\"type\":[\"id\"],\"version\":[\"1.3\"],\"parallelism\":[\"1\"]}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-acme " ],
+    "notBefore" : 0,
+    "groups" : [ "/Employees" ]
+  }, {
+    "id" : "802911f6-3876-4fc5-ba1a-c471a173d6f3",
+    "username" : "bob",
+    "firstName" : "bob",
+    "lastName" : "bob",
+    "email" : "bob@acme",
+    "emailVerified" : false,
+    "createdTimestamp" : 1772388401705,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "f7157303-5300-4b0f-a545-c481750f0e90",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1772388415665,
+      "secretData" : "{\"value\":\"gDZH2Q3DVV8eCqJvQUodck9OcXRd8eogA1kxYzUtcNc=\",\"salt\":\"P2hF6mt911kC3BLvq1Xc9Q==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":5,\"algorithm\":\"argon2\",\"additionalParameters\":{\"hashLength\":[\"32\"],\"memory\":[\"7168\"],\"type\":[\"id\"],\"version\":[\"1.3\"],\"parallelism\":[\"1\"]}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-acme " ],
+    "notBefore" : 0,
+    "groups" : [ "/Employees" ]
+  } ],
   "scopeMappings": [
     {
       "clientScope": "offline_access",
@@ -725,6 +772,57 @@
         "post.logout.redirect.uris": "+",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "organization",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "secure-client",
+      "name": "secure-client",
+      "secret": "{{ vault_secure_oidc_secret }}",
+      "description": "",
+      "rootUrl": "https://secure.server.acme",
+      "adminUrl": "https://secure.server.acme",
+      "baseUrl": "https://secure.server.acme/",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [
+        "https://secure.server.acme/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "realm_client": "false",
+        "post.logout.redirect.uris": "+"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
@@ -1623,58 +1721,6 @@
         "subType": "anonymous",
         "subComponents": {},
         "config": {}
-      }
-    ],
-    "org.keycloak.keys.KeyProvider": [
-      {
-        "id": "0320fc38-e848-4525-b5f0-eec1572a02fb",
-        "name": "hmac-generated-hs512",
-        "providerId": "hmac-generated",
-        "subComponents": {},
-        "config": {
-          "priority": [
-            "100"
-          ],
-          "algorithm": [
-            "HS512"
-          ]
-        }
-      },
-      {
-        "id": "f0495747-0302-4660-9022-231f858c9d4c",
-        "name": "aes-generated",
-        "providerId": "aes-generated",
-        "subComponents": {},
-        "config": {
-          "priority": [
-            "100"
-          ]
-        }
-      },
-      {
-        "id": "f8bb530f-eccb-4162-a6fb-99466fd7a630",
-        "name": "rsa-enc-generated",
-        "providerId": "rsa-enc-generated",
-        "subComponents": {},
-        "config": {
-          "priority": [
-            "100"
-          ],
-          "algorithm": [
-            "RSA-OAEP"
-          ]
-        }
-      },
-      {
-        "id": "87cb1949-5dcc-4a9b-a851-076b948a0d76",
-        "name": "rsa-generated",
-        "providerId": "rsa-generated",
-        "subComponents": {},
-        "config": {
-          "priority": [
-            "100"
-          ]
-        }
       }
     ]
   },
