@@ -1,0 +1,58 @@
+---
+- name: Ensure export directory exists
+  file:
+    path: "{{ export_dir }}"
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: '0755'
+
+- name: Create temporary step password file
+  copy:
+    content: "{{ step_ca_password }}"
+    dest: "/tmp/step_pass.txt"
+    mode: '0600'
+
+- name: Generate client certificate
+  command: >
+    step ca certificate {{ cert_name }}
+    {{ cert_dir }}/{{ cert_name }}.crt
+    {{ cert_dir }}/{{ cert_name }}.key
+    --provisioner-password-file /tmp/step_pass.txt
+  args:
+    creates: "{{ cert_dir }}/{{ cert_name }}.crt"
+
+- name: Delete temporary step password file
+  file:
+    path: "/tmp/step_pass.txt"
+    state: absent
+
+- name: Set permissions on certificate
+  file:
+    path: "{{ cert_dir }}/{{ cert_name }}.crt"
+    owner: root
+    group: freerad
+    mode: '0640'
+
+- name: Set permissions on private key
+  file:
+    path: "{{ cert_dir }}/{{ cert_name }}.key"
+    owner: root
+    group: freerad
+    mode: '0640'
+
+- name: Export PKCS12 bundle
+  command: >
+    openssl pkcs12 -export
+    -in {{ cert_dir }}/{{ cert_name }}.crt
+    -inkey {{ cert_dir }}/{{ cert_name }}.key
+    -certfile /etc/step-ca/certs/root_ca.crt
+    -out {{ export_dir }}/{{ cert_name }}.p12
+    -passout pass:{{ pkcs12_password }}
+
+- name: Set ownership on exported PKCS12 file
+  file:
+    path: "{{ export_dir }}/{{ cert_name }}.p12"
+    owner: vagrant
+    group: vagrant
+    mode: '0644'

@@ -199,7 +199,7 @@ eap {
 	tls-config tls-common {
 		certificate_file = /etc/freeradius/3.0/certs/auth.server.acme.crt
 		private_key_file = /etc/freeradius/3.0/certs/auth.server.acme.key
-		ca_file = /etc/step-ca/certs/root_ca.crt
+		ca_file = /etc/freeradius/3.0/certs/ca_bundle.pem
 		#  If Private key & Certificate are located in
 		#  the same file, then private_key_file &
 		#  certificate_file must contain the same file
