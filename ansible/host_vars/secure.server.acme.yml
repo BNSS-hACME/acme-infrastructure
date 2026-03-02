@@ -3,6 +3,11 @@ firewall:
   ports:
     - 80
     - 443
+  allowed_subnets:
+    - 10.0.10.0/24 # Stockholm
+    - 10.0.20.0/24 # London
+    - 10.0.50.0/24 # Servers(in Stockholm)
+    # No VPN Clients
 
 vault_secure_oidc_passphrase: !vault |
   $ANSIBLE_VAULT;1.1;AES256
