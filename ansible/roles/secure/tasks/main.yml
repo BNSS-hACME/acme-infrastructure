@@ -107,14 +107,30 @@
   ansible.builtin.template:
     src: secure.conf.j2
     dest: /etc/apache2/sites-available/secure-site.conf
+    owner: "root"
+    group: "root"
+    mode: "0644"
   notify: Restart Apache
 
-- name: 12. Enable required Apache modules and secure site
-  ansible.builtin.shell: |
-    a2enmod ssl
-    a2enmod headers
-    a2enmod auth_openidc
-    a2enmod cgid
-    a2dissite 000-default
-    a2ensite secure-site.conf
+- name: 12. Enable required Apache modules
+  community.general.apache2_module:
+    state: present
+    name: "{{ item }}"
+  loop:
+    - ssl
+    - headers
+    - auth_openidc
+    - cgid
+  notify: Restart Apache
+
+- name: 13. Disable default site
+  ansible.builtin.command: a2dissite 000-default
+  register: disable_default
+  changed_when: "'Site 000-default disabled' in disable_default.stdout"
+  notify: Restart Apache
+
+- name: 14. Enable secure site
+  ansible.builtin.command: a2ensite secure-site.conf
+  register: enable_secure
+  changed_when: "'Enabling site secure-site' in enable_secure.stdout"
   notify: Restart Apache

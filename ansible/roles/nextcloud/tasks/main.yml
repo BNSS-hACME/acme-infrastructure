@@ -195,6 +195,10 @@
     $OCC config:app:set user_oidc allow_multiple_user_backends --value=0
     $OCC config:app:set user_oidc soft_auto_provision --value=1
 
+    # Disable generic file sharing methods
+    $OCC config:app:set core shareapi_allow_links --value=no
+    $OCC config:app:set core shareapi_allow_mail_notification --value=no
+
     WL='["10.0.50.0/24", "10.0.10.0/24", "10.0.20.0/24", "10.0.11.0/24"]'
     $OCC config:app:set bruteforcesettings whitelist --value="$WL"
   changed_when: false
