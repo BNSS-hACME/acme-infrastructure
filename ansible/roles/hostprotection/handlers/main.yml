@@ -3,3 +3,8 @@
   ansible.builtin.service:
     name: fail2ban
     state: restarted
+
+- name: Restart Apache
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
