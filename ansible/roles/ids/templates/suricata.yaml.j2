@@ -46,12 +46,10 @@ af-packet:
 
 app-layer:
   protocols:
-    dnp3:
-      enabled: yes
-      detection-enabled: yes
-    modbus:
-      enabled: yes
-      detection-enabled: yes
+{% for protocol, protocol_settings in ids_app_layer_protocols.items() %}
+    {{ protocol }}:
+{{ ({'enabled': true} | combine(protocol_settings, recursive=True)) | to_nice_yaml(indent=2, sort_keys=False) | indent(6, true) }}
+{% endfor %}
 
 outputs:
   - fast:
@@ -60,12 +58,13 @@ outputs:
   - eve-log:
       enabled: yes
       filetype: regular
+      community-id: true
       filename: {{ ids_eve_log }}
       types:
-        - alert
-        - dns
-        - http
-        - tls
+{% for eve_type in ids_eve_types %}
+        - {{ eve_type }}
+{% endfor %}
+
 
 logging:
   default-log-level: notice

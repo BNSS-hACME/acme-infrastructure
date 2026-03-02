@@ -5,10 +5,48 @@ ids_home_net: "10.0.50.0/24"
 ids_log_dir: /var/log/suricata
 ids_alert_log: fast.log
 ids_eve_log: eve.json
+ids_eve_types:
+  - alert
+  - dns
+  - http
+  - tls
+  - ssh
+  - dhcp
+  - flow
 
 ids_rule_path: /var/lib/suricata/rules
 ids_rule_files:
   - suricata.rules
+
+ids_app_layer_protocols:
+  http:
+    libhtp:
+      default-config:
+        personality: IDS
+        request-body-limit: "100 KiB"
+        response-body-limit: "100 KiB"
+        request-body-minimal-inspect-size: "32 KiB"
+        request-body-inspect-window: "4 KiB"
+        response-body-minimal-inspect-size: "40 KiB"
+        response-body-inspect-window: "16 KiB"
+        response-body-decompress-layer-limit: 2
+        http-body-inline: auto
+        swf-decompression:
+          enabled: false
+          type: both
+          compress-depth: "100 KiB"
+          decompress-depth: "100 KiB"
+        double-decode-path: false
+        double-decode-query: false
+  tls: {}
+  dns: {}
+  ssh: {}
+  dhcp: {}
+  quic: {}
+  dnp3:
+    detection-enabled: true
+  modbus:
+    detection-enabled: true
 
 ids_update_rules: true
 ids_install_evebox: false
