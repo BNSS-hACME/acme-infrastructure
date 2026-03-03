@@ -1,12 +1,4 @@
 ---
-- name: Get public IPv4 address of VPN server
-  ansible.builtin.uri:
-    url: http://icanhazip.com
-    method: GET
-    return_content: true
-  register: openvpn_client_public_ip
-  changed_when: false
-
 - name: Create temp directory on VPN host
   ansible.builtin.file:
     path: "{{ openvpn_client_profile_tmp }}"
@@ -45,7 +37,7 @@
       client
       dev tun
       proto udp
-      remote {{ openvpn_client_public_ip.content | trim }} 1194
+      remote {{ openvpn_client_server_hostname }} 1194
 
       <ca>
       {{ openvpn_client_slurped.results[2].content | b64decode | trim }}

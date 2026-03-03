@@ -18,6 +18,7 @@ openvpn_stepca_root_cert_path: "/etc/step-ca/certs/root_ca.crt"
 openvpn_stepca_intermediate_cert_path: "/etc/step-ca/certs/intermediate_ca.crt"
 openvpn_stepca_provisioner: "admin"
 openvpn_step_cli_version: "0.29.0"
+openvpn_stepca_crl_url: "{{ openvpn_stepca_url }}/crl"
 
 # ---- x-PKI / NSS-VPKI ----
 # Public RCA certificate from the KTH NSS-VPKI.  Fetched at provision time;

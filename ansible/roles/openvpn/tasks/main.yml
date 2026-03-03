@@ -126,6 +126,77 @@
   when: stepca_host is defined
   notify: Restart openvpn
 
+# ---- CRL from Step CA ----
+# Uses crl-verify directory mode so OpenSSL only checks a CRL for certs whose
+# issuer hash matches — NSS-VPKI certs are unaffected (no matching CRL file).
+
+- name: Create CRL directory
+  ansible.builtin.file:
+    path: /etc/openvpn/server/crl
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: stepca_host is defined
+
+- name: Download CRL from Step CA (DER format)
+  ansible.builtin.uri:
+    url: "{{ openvpn_stepca_crl_url }}"
+    dest: /tmp/stepca-crl.der
+    ca_path: /etc/openvpn/server/ca-parts/02-stepca-root.crt
+    mode: "0644"
+    force: true
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Convert CRL from DER to PEM
+  ansible.builtin.command:
+    cmd: openssl crl -inform DER -in /tmp/stepca-crl.der -out /tmp/stepca-crl.pem
+  changed_when: false
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Get CRL issuer hash
+  ansible.builtin.command:
+    cmd: openssl crl -noout -hash -in /tmp/stepca-crl.pem
+  register: openvpn_stepca_crl_hash
+  changed_when: false
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Install CRL under issuer-hash filename
+  ansible.builtin.copy:
+    src: /tmp/stepca-crl.pem
+    dest: "/etc/openvpn/server/crl/{{ openvpn_stepca_crl_hash.stdout }}.r0"
+    mode: "0644"
+    remote_src: true
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Install cron
+  ansible.builtin.apt:
+    name: cron
+    state: present
+  when: stepca_host is defined
+
+- name: Install cron job to refresh CRL from Step CA every 6 hours
+  ansible.builtin.cron:
+    name: "Refresh OpenVPN CRL from Step CA"
+    minute: "0"
+    hour: "*/6"
+    job: >-
+      curl -sf --cacert /etc/openvpn/server/ca-parts/02-stepca-root.crt
+      {{ openvpn_stepca_crl_url }} -o /tmp/stepca-crl.der
+      && openssl crl -inform DER -in /tmp/stepca-crl.der -out /tmp/stepca-crl.pem
+      && cp /tmp/stepca-crl.pem /etc/openvpn/server/crl/{{ openvpn_stepca_crl_hash.stdout }}.r0
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_crl_hash is defined
+
 # ---- OpenVPN server ----
 
 - name: Install OpenVPN
