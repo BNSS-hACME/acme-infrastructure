@@ -3,9 +3,7 @@
   ansible.builtin.apt:
     name:
       - dnsmasq
-      - iptables
-      - iptables-persistent
-      - netfilter-persistent
+      - nftables
     state: present
     update_cache: true
 
@@ -38,32 +36,18 @@
     state: present
     reload: true
 
-- name: NAT masquerade outbound traffic on WAN interface
-  ansible.builtin.iptables:
-    table: nat
-    chain: POSTROUTING
-    out_interface: "{{ wan_interface }}"
-    jump: MASQUERADE
-  notify: Save iptables rules
+- name: Deploy nftables NAT ruleset
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    mode: "0644"
+  notify: Reload nftables
 
-- name: Allow forwarded traffic from LAN to WAN
-  ansible.builtin.iptables:
-    chain: FORWARD
-    in_interface: "{{ lan_interface }}"
-    out_interface: "{{ wan_interface }}"
-    jump: ACCEPT
-  notify: Save iptables rules
-
-- name: Allow established/related traffic back from WAN to LAN
-  ansible.builtin.iptables:
-    chain: FORWARD
-    in_interface: "{{ wan_interface }}"
-    out_interface: "{{ lan_interface }}"
-    ctstate:
-      - ESTABLISHED
-      - RELATED
-    jump: ACCEPT
-  notify: Save iptables rules
+- name: Enable nftables service
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: started
 
 - name: Enable dnsmasq service
   ansible.builtin.service:
