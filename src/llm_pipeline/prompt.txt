@@ -29,7 +29,7 @@ Output requirements:
 - Return exactly one top-level object with a "findings" array.
 - One object per distinct attack pattern.
 - Each evidence entry must contain a direct quoted log line fragment.
-- Do not return an other attack_type than "Benign/normal traffic" if "malicious" is false. 
+- Do not return another attack_type than "Benign/normal traffic" if "malicious" is false. 
 
 Required JSON schema:
 {
