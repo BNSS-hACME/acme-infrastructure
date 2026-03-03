@@ -1,0 +1,28 @@
+---
+- name: Reload NM connections
+  ansible.builtin.command: nmcli connection reload
+  changed_when: true
+
+- name: Bring up LAN connection
+  ansible.builtin.command: nmcli con up "{{ raspberrypi_lan_interface }}-lan"
+  changed_when: true
+
+- name: Restart dnsmasq
+  ansible.builtin.service:
+    name: dnsmasq
+    state: restarted
+
+- name: Apply sysctl
+  ansible.builtin.command:
+    cmd: sysctl -p /etc/sysctl.d/99-raspberrypi.conf
+  changed_when: true
+
+- name: Reload NetworkManager
+  ansible.builtin.service:
+    name: NetworkManager
+    state: reloaded
+
+- name: Reload nftables
+  ansible.builtin.service:
+    name: nftables
+    state: reloaded
