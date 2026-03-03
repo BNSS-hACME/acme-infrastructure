@@ -1,24 +1,37 @@
 # acme-infrastructure
 
-[Short description of the project — what it is, what it does, and why it exists]
+Infrastructure-as-code for an academic network security lab. Provisions a set of VMs and physical Raspberry Pi devices that together simulate a corporate network with PKI, identity management, VPN, DNS, cloud storage, and secure web services.
 
 ## Overview
 
-[High-level summary: academic project, federated PKI, IAM, secure services, etc.]
+This project is part of a course on network security and implements a full IAM and PKI stack using open-source tools: [Step CA](https://smallstep.com/docs/step-ca/) for certificate management, [Keycloak](https://www.keycloak.org/) for OIDC identity, and [FreeRADIUS](https://freeradius.org/) for network authentication. Supporting services include OpenVPN, Nextcloud, an Apache HTTPS front-end, and an AI service — all running as VMs provisioned by Vagrant and configured by Ansible. Two Raspberry Pis provide physical WAN/LAN routing at each deployment site.
 
 ## Architecture
 
-[Diagram or description of the network topology]
-
 ### Network Layout
 
-[The two networks: 10.0.50.0/24 internal, 10.0.10.0/24 external, subnets]
+```
+Internet / ISP
+      |
+  [eth0 DHCP]
+  Raspberry Pi          ← physical device, one per site (stockholm / london)
+  [eth1 192.168.50.1]
+      |   192.168.50.0/24
+  Physical Router       ← gets address via RPi DHCP (192.168.50.x)
+      |   10.0.10.0/24  (physical LAN)
+  router.server.acme    ← VM bridged to physical LAN (10.0.10.50)
+      |   10.0.50.0/24  (internal VM network)
+  ┌───┴────────────────────────────────────┐
+  dns  vpn  auth  cloud  ai  secure  dvwa
+```
 
-### Services
+Both sites share the same physical LAN subnet (`10.0.10.0/24`) and internal VM subnet (`10.0.50.0/24`). The Raspberry Pi at each site acts as a WAN/LAN pass-through router with NAT, placing the physical router (and in turn all VMs) behind it.
+
+### Virtual Machines
 
 | Service               | Host               | IP                     | Description                               |
 | --------------------- | ------------------ | ---------------------- | ----------------------------------------- |
-| Router                | router.server.acme | 10.0.50.1 / 10.0.10.50 | NAT gateway, network bridge               |
+| Router                | router.server.acme | 10.0.10.50 / 10.0.50.1 | NAT gateway, bridges physical and VM LANs |
 | DNS                   | dns.server.acme    | 10.0.50.10             | Unbound DNS resolver                      |
 | Certificate Authority | auth.server.acme   | 10.0.50.13             | Step CA, Keycloak OIDC, FreeRADIUS        |
 | VPN                   | vpn.server.acme    | 10.0.50.11             | OpenVPN server                            |
@@ -27,11 +40,20 @@
 | AI                    | ai.server.acme     | 10.0.50.14             | AI service deployment                     |
 | DVWA                  | dvwa.server.acme   | 10.0.50.50             | Damn Vulnerable Web App (lab environment) |
 
+### Physical Devices
+
+| Device | Host             | LAN IP       | Description                                              |
+| ------ | ---------------- | ------------ | -------------------------------------------------------- |
+| RPi 1  | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the stockholm physical router |
+| RPi 2  | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the london physical router    |
+
+The RPis are reachable for Ansible management via dynamic DNS (`rpi1-hacme.mooo.com`, `rpi2-hacme.mooo.com`). Each Pi bridges its WAN interface (`eth0`, DHCP from ISP) to a LAN interface (`eth1`, static `192.168.50.1/24`) and runs a DHCP server for the downstream physical router.
+
 ## Prerequisites
 
-[Tools needed and version requirements]
+On macOS, use [Homebrew](https://brew.sh/).
 
-On MacOS, use [Homebrew](https://brew.sh/).
+**For VM provisioning:**
 
 - [Vagrant](https://developer.hashicorp.com/vagrant/install)
 - [VirtualBox](https://www.virtualbox.org/wiki/Downloads) — if you have an M-series MacBook, use `macOS / Apple Silicon hosts`
@@ -40,6 +62,15 @@ On MacOS, use [Homebrew](https://brew.sh/).
 ```bash
 brew tap hashicorp/tap
 brew install hashicorp/tap/hashicorp-vagrant
+```
+
+**For Ansible (VM and RPi configuration):**
+
+- Python 3 with `pip`
+- Ansible (installed automatically via the `ansible/` direnv)
+
+```bash
+brew install python direnv
 ```
 
 ## Getting Started
