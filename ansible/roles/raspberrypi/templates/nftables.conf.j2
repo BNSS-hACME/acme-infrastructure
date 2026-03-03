@@ -10,9 +10,9 @@ table inet filter {
     chain forward {
         type filter hook forward priority filter; policy drop;
         # LAN → WAN
-        iifname "{{ lan_interface }}" oifname "{{ wan_interface }}" accept
+        iifname "{{ raspberrypi_lan_interface }}" oifname "{{ raspberrypi_wan_interface }}" accept
         # WAN → LAN (return traffic only)
-        iifname "{{ wan_interface }}" oifname "{{ lan_interface }}" ct state { established, related } accept
+        iifname "{{ raspberrypi_wan_interface }}" oifname "{{ raspberrypi_lan_interface }}" ct state { established, related } accept
     }
 
     chain output {
@@ -23,6 +23,6 @@ table inet filter {
 table ip nat {
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
-        oifname "{{ wan_interface }}" masquerade
+        oifname "{{ raspberrypi_wan_interface }}" masquerade
     }
 }

@@ -7,24 +7,38 @@
     state: present
     update_cache: true
 
-- name: Configure eth1 as static LAN interface (NetworkManager)
-  community.general.nmcli:
-    type: ethernet
-    conn_name: "{{ lan_interface }}-lan"
-    ifname: "{{ lan_interface }}"
-    ip4: "{{ lan_ip }}/{{ lan_prefix }}"
-    never_default4: true
-    state: present
-  notify: Bring up LAN connection
+- name: Configure eth1 as static LAN interface (NetworkManager keyfile)
+  ansible.builtin.copy:
+    dest: "/etc/NetworkManager/system-connections/{{ raspberrypi_lan_interface }}-lan.nmconnection"
+    content: |
+      [connection]
+      id={{ raspberrypi_lan_interface }}-lan
+      type=ethernet
+      interface-name={{ raspberrypi_lan_interface }}
+
+      [ethernet]
+
+      [ipv4]
+      address1={{ raspberrypi_lan_ip }}/{{ raspberrypi_lan_prefix }}
+      method=manual
+      never-default=true
+
+      [ipv6]
+      addr-gen-mode=default
+      method=auto
+    mode: "0600"
+  notify:
+    - Reload NM connections
+    - Bring up LAN connection
 
 - name: Configure dnsmasq DHCP server on LAN interface
   ansible.builtin.copy:
     dest: /etc/dnsmasq.d/lan.conf
     content: |
       # Serve DHCP only on LAN (eth1), not on WAN
-      interface={{ lan_interface }}
+      interface={{ raspberrypi_lan_interface }}
       bind-interfaces
-      dhcp-range={{ dhcp_range_start }},{{ dhcp_range_end }},{{ lan_netmask }},{{ dhcp_lease_time }}
+      dhcp-range={{ raspberrypi_dhcp_range_start }},{{ raspberrypi_dhcp_range_end }},{{ raspberrypi_lan_netmask }},{{ raspberrypi_dhcp_lease_time }}
     mode: "0644"
   notify: Restart dnsmasq
 
