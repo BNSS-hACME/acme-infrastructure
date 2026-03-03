@@ -128,12 +128,20 @@
 
 # ---- CRL from Step CA ----
 
-- name: Fetch CRL from Step CA
-  ansible.builtin.shell:
-    cmd: >-
-      curl -sf --cacert /etc/openvpn/server/ca-parts/02-stepca-root.crt
-      {{ openvpn_stepca_crl_url }}
-      | openssl crl -inform DER -out /etc/openvpn/server/crl.pem
+- name: Download CRL from Step CA (DER format)
+  ansible.builtin.get_url:
+    url: "{{ openvpn_stepca_crl_url }}"
+    dest: /tmp/stepca-crl.der
+    ca_path: /etc/openvpn/server/ca-parts/02-stepca-root.crt
+    mode: "0644"
+    force: true
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Convert CRL from DER to PEM
+  ansible.builtin.command:
+    cmd: openssl crl -inform DER -in /tmp/stepca-crl.der -out /etc/openvpn/server/crl.pem
   changed_when: false
   when:
     - stepca_host is defined
