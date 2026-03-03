@@ -8,24 +8,9 @@
     update_cache: true
 
 - name: Configure eth1 as static LAN interface (NetworkManager keyfile)
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: eth1-lan.nmconnection.j2
     dest: "/etc/NetworkManager/system-connections/{{ raspberrypi_lan_interface }}-lan.nmconnection"
-    content: |
-      [connection]
-      id={{ raspberrypi_lan_interface }}-lan
-      type=ethernet
-      interface-name={{ raspberrypi_lan_interface }}
-
-      [ethernet]
-
-      [ipv4]
-      address1={{ raspberrypi_lan_ip }}/{{ raspberrypi_lan_prefix }}
-      method=manual
-      never-default=true
-
-      [ipv6]
-      addr-gen-mode=default
-      method=auto
     mode: "0600"
   notify:
     - Reload NM connections
