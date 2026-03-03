@@ -1,2 +1,2 @@
 ---
-ansible_host: "10.0.10.84"
+ansible_host: "rpi2-hacme.mooo.com"
