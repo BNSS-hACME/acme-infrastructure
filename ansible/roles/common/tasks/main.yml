@@ -41,5 +41,6 @@
     owner: root
     group: root
     mode: "0644"
+    validate: "iptables-restore --test %s"
   notify: Restart netfilter-persistent
   when: firewall is defined
