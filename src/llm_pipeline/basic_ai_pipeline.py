@@ -11,7 +11,9 @@ from openai import APIConnectionError, APIError, APITimeoutError, OpenAI
 
 API_BASE_URL = "http://localhost:11434/v1"
 MODEL_NAME = "qwen3:0.6b"
-DEFAULT_ALERT_FILE = "/tmp/llm_alerts.log"
+DEFAULT_ALERT_DIR = Path.home() / ".llm_pipeline"
+DEFAULT_ALERT_DIR.mkdir(mode=0o700, exist_ok=True)
+DEFAULT_ALERT_FILE = str(DEFAULT_ALERT_DIR / "llm_alerts.log")
 DEFAULT_PROMPT_FILE = Path(__file__).with_name("prompt.txt")
 ALLOWED_ATTACK_TYPES = {
     "SQL Injection",
