@@ -2,10 +2,8 @@ import argparse
 import json
 import os
 from pathlib import Path
-import re
 import sys
 import time
-from urllib.parse import unquote_plus
 
 from openai import APIConnectionError, APIError, APITimeoutError, OpenAI
 
@@ -169,156 +167,6 @@ def validate_result(payload):
     return {"findings": findings}
 
 
-def make_finding(attack_type, confidence, evidence, explanation):
-    return {
-        "malicious": attack_type != "Benign/normal traffic",
-        "attack_type": attack_type,
-        "confidence": max(0.0, min(1.0, float(confidence))),
-        "evidence": list(dict.fromkeys([item for item in evidence if item])),
-        "explanation": explanation.strip(),
-    }
-
-
-def parse_log_line(line):
-    pattern = re.compile(
-        r'^(?P<ip>\S+) \S+ \S+ \[(?P<timestamp>[^\]]+)\] "(?P<method>[A-Z]+) (?P<url>[^ ]+) HTTP/[^"]+" (?P<status>\d{3}) \S+ "(?P<referrer>[^"]*)" "(?P<user_agent>[^"]*)"'
-    )
-    match = pattern.match(line.strip())
-    if not match:
-        return None
-
-    parsed = match.groupdict()
-    parsed["status"] = int(parsed["status"])
-    parsed["decoded_url"] = unquote_plus(parsed["url"])
-    return parsed
-
-
-def heuristic_findings(log_chunk):
-    sql_regex = re.compile(r"(union\s+select|select\s+.+\s+from|or\s+1=1|information_schema|sleep\(|benchmark\()", re.IGNORECASE)
-    xss_regex = re.compile(r"(<script|javascript:|onerror=|onload=)", re.IGNORECASE)
-    cmd_regex = re.compile(r"(;|&&|\|\|?|`|\$\()", re.IGNORECASE)
-
-    scan_ua_tokens = ("sqlmap", "nikto", "nmap", "nessus", "acunetix", "wpscan", "python-requests")
-    enumeration_paths = ("/.env", "/backup", "/config", "/admin", "/phpinfo", "/.git", "/wp-admin", "/info.php")
-
-    by_type = {}
-    brute_force_tracker = {}
-
-    def add(attack_type, confidence, line, explanation):
-        entry = by_type.setdefault(
-            attack_type,
-            {
-                "confidence": confidence,
-                "evidence": [],
-                "explanation": explanation,
-            },
-        )
-        entry["confidence"] = max(entry["confidence"], confidence)
-        if line not in entry["evidence"]:
-            entry["evidence"].append(line)
-
-    for raw_line in log_chunk.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-
-        parsed = parse_log_line(line)
-        if not parsed:
-            continue
-
-        method = parsed["method"]
-        decoded_url = parsed["decoded_url"]
-        status = parsed["status"]
-        user_agent = parsed["user_agent"].lower()
-        ip = parsed["ip"]
-
-        if sql_regex.search(decoded_url):
-            add("SQL Injection", 0.95, line, "Detected SQLi pattern in query/URL.")
-
-        if xss_regex.search(decoded_url):
-            add("Cross-Site Scripting (XSS)", 0.95, line, "Detected XSS payload in URL.")
-
-        if cmd_regex.search(decoded_url) and any(token in decoded_url.lower() for token in ("/etc/passwd", "cat ", "bash", "sh ", "cmd=")):
-            add("Command injection", 0.92, line, "Detected possible command-injection sequence.")
-
-        if any(path in decoded_url.lower() for path in enumeration_paths) and status in (200, 301, 302, 401, 403, 404):
-            add("Directory or endpoint enumeration", 0.78, line, "Detected typical enumeration against sensitive paths.")
-
-        if any(token in user_agent for token in scan_ua_tokens):
-            add("Automated vulnerability scanning", 0.9, line, "Detected scanner/automation user-agent.")
-
-        if method == "POST" and "/login" in decoded_url.lower() and status in (401, 403):
-            key = (ip, decoded_url)
-            brute_force_tracker[key] = brute_force_tracker.get(key, 0) + 1
-            if brute_force_tracker[key] >= 4:
-                add("Brute-force authentication", 0.86, line, "Detected multiple failed login attempts.")
-
-    findings = [
-        make_finding(
-            attack_type=attack_type,
-            confidence=values["confidence"],
-            evidence=values["evidence"],
-            explanation=values["explanation"],
-        )
-        for attack_type, values in by_type.items()
-    ]
-
-    if not findings:
-        findings = [
-            make_finding(
-                attack_type="Benign/normal traffic",
-                confidence=0.55,
-                evidence=[],
-                explanation="Heuristics found no clear attack patterns.",
-            )
-        ]
-
-    findings.sort(key=lambda entry: entry.get("confidence", 0.0), reverse=True)
-    return {"findings": findings}
-
-
-def merge_findings(primary, secondary):
-    merged = {}
-
-    for source in (primary, secondary):
-        for finding in source.get("findings", []):
-            attack_type = finding.get("attack_type") or "unknown"
-            key = (attack_type, bool(finding.get("malicious", False)))
-            existing = merged.get(key)
-            if existing is None:
-                merged[key] = {
-                    "malicious": bool(finding.get("malicious", False)),
-                    "attack_type": finding.get("attack_type"),
-                    "confidence": float(finding.get("confidence", 0.0)),
-                    "evidence": list(finding.get("evidence", [])),
-                    "explanation": str(finding.get("explanation", "")).strip(),
-                }
-                continue
-
-            existing["confidence"] = max(existing["confidence"], float(finding.get("confidence", 0.0)))
-            existing["evidence"] = list(dict.fromkeys(existing["evidence"] + list(finding.get("evidence", []))))
-            if not existing["explanation"] and finding.get("explanation"):
-                existing["explanation"] = str(finding.get("explanation", "")).strip()
-
-    findings = list(merged.values())
-    malicious_exists = any(item.get("malicious") for item in findings)
-    if malicious_exists:
-        findings = [item for item in findings if item.get("malicious")]
-    elif not findings:
-        findings = [
-            {
-                "malicious": False,
-                "attack_type": "Benign/normal traffic",
-                "confidence": 0.0,
-                "evidence": [],
-                "explanation": "No findings available.",
-            }
-        ]
-
-    findings.sort(key=lambda entry: entry.get("confidence", 0.0), reverse=True)
-    return {"findings": findings}
-
-
 def read_last_lines(log_file, line_count):
     path = Path(log_file)
     if not path.exists():
@@ -395,18 +243,14 @@ def main():
     print("Analyzing logs...")
     analysis_result = analyze_logs_with_llm(log_chunk, prompt_template, client)
     validated = validate_result(analysis_result)
-    heuristic = heuristic_findings(log_chunk)
 
     if validated is None:
         return 1
-    
-
-    merged = merge_findings(validated, heuristic)
 
     print("\n--- LLM Analysis Result ---")
     print(json.dumps(validated, indent=2, ensure_ascii=False))
 
-    malicious_findings = [item for item in merged.get("findings", []) if item.get("malicious")]
+    malicious_findings = [item for item in validated.get("findings", []) if item.get("malicious")]
     if malicious_findings:
         with open(args.alert_file, "a", encoding="utf-8") as handle:
             for finding in malicious_findings:
