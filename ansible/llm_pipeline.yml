@@ -1,3 +1,4 @@
+---
 - name: Deploy LLM pipeline
   hosts: ai
   become: true

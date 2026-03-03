@@ -1,1 +1,1 @@
-openai
+openai:2.24.0
