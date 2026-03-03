@@ -127,6 +127,17 @@
   notify: Restart openvpn
 
 # ---- CRL from Step CA ----
+# Uses crl-verify directory mode so OpenSSL only checks a CRL for certs whose
+# issuer hash matches — NSS-VPKI certs are unaffected (no matching CRL file).
+
+- name: Create CRL directory
+  ansible.builtin.file:
+    path: /etc/openvpn/server/crl
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: stepca_host is defined
 
 - name: Download CRL from Step CA (DER format)
   ansible.builtin.uri:
@@ -141,8 +152,27 @@
 
 - name: Convert CRL from DER to PEM
   ansible.builtin.command:
-    cmd: openssl crl -inform DER -in /tmp/stepca-crl.der -out /etc/openvpn/server/crl.pem
+    cmd: openssl crl -inform DER -in /tmp/stepca-crl.der -out /tmp/stepca-crl.pem
   changed_when: false
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Get CRL issuer hash
+  ansible.builtin.command:
+    cmd: openssl crl -noout -hash -in /tmp/stepca-crl.pem
+  register: stepca_crl_hash
+  changed_when: false
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Install CRL under issuer-hash filename
+  ansible.builtin.copy:
+    src: /tmp/stepca-crl.pem
+    dest: "/etc/openvpn/server/crl/{{ stepca_crl_hash.stdout }}.r0"
+    mode: "0644"
+    remote_src: true
   when:
     - stepca_host is defined
     - openvpn_stepca_root_stat.stat.exists
@@ -160,10 +190,12 @@
     hour: "*/6"
     job: >-
       curl -sf --cacert /etc/openvpn/server/ca-parts/02-stepca-root.crt
-      {{ openvpn_stepca_crl_url }}
-      | openssl crl -inform DER -out /tmp/crl.pem.tmp
-      && mv /tmp/crl.pem.tmp /etc/openvpn/server/crl.pem
-  when: stepca_host is defined
+      {{ openvpn_stepca_crl_url }} -o /tmp/stepca-crl.der
+      && openssl crl -inform DER -in /tmp/stepca-crl.der -out /tmp/stepca-crl.pem
+      && cp /tmp/stepca-crl.pem /etc/openvpn/server/crl/{{ stepca_crl_hash.stdout }}.r0
+  when:
+    - stepca_host is defined
+    - stepca_crl_hash is defined
 
 # ---- OpenVPN server ----
 

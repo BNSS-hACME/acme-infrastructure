@@ -87,7 +87,7 @@ ca ca-bundle.crt
 cert server.crt
 key server.key  # This file should be kept secret
 {% if stepca_host is defined %}
-crl-verify /etc/openvpn/server/crl.pem
+crl-verify /etc/openvpn/server/crl/ dir
 {% endif %}
 
 # 'require': cert-only mode — client must present a cert signed by the CA bundle

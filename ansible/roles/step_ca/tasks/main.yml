@@ -105,7 +105,10 @@
     import json
     with open('/etc/step-ca/config/ca.json', 'r') as f:
         data = json.load(f)
-    want = {'enabled': True, 'cacheDuration': '8h', 'renewalDuration': '4h'}
+    # idpURL makes step-ca include an IssuingDistributionPoint in the CRL AND
+    # a matching CRL Distribution Points extension in every issued cert.
+    # Both pointing to the same URL satisfies OpenSSL's scope check.
+    want = {'enabled': True, 'cacheDuration': '8h', 'renewalDuration': '4h', 'idpURL': '{{ step_ca_url }}/crl'}
     if data.get('crl') != want:
         data['crl'] = want
         with open('/etc/step-ca/config/ca.json', 'w') as f:
