@@ -17,6 +17,11 @@
     cmd: sysctl -p /etc/sysctl.d/99-raspberrypi.conf
   changed_when: true
 
+- name: Reload NetworkManager
+  ansible.builtin.service:
+    name: NetworkManager
+    state: reloaded
+
 - name: Reload nftables
   ansible.builtin.service:
     name: nftables
