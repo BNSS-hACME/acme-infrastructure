@@ -1,0 +1,12 @@
+---
+- name: Generate Wi-Fi client certificate
+  hosts: freeradius
+  become: true
+
+  vars_prompt:
+    - name: cert_name
+      prompt: "Client certificate name: "
+      private: false
+
+  roles:
+    - wifi_cert
