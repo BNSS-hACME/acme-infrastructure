@@ -63,4 +63,4 @@
   ansible.builtin.fetch:
     src: "{{ wifi_cert_export_dir }}/{{ cert_name }}.p12"
     dest: "~/Downloads/"
-    flat: yes
+    flat: true
