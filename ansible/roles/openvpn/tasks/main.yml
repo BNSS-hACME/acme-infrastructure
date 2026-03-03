@@ -126,6 +126,31 @@
   when: stepca_host is defined
   notify: Restart openvpn
 
+# ---- CRL from Step CA ----
+
+- name: Fetch CRL from Step CA
+  ansible.builtin.shell:
+    cmd: >-
+      curl -sf --cacert /etc/openvpn/server/ca-parts/02-stepca-root.crt
+      {{ openvpn_stepca_crl_url }}
+      | openssl crl -inform DER -out /etc/openvpn/server/crl.pem
+  changed_when: false
+  when:
+    - stepca_host is defined
+    - openvpn_stepca_root_stat.stat.exists
+
+- name: Install cron job to refresh CRL from Step CA every 6 hours
+  ansible.builtin.cron:
+    name: "Refresh OpenVPN CRL from Step CA"
+    minute: "0"
+    hour: "*/6"
+    job: >-
+      curl -sf --cacert /etc/openvpn/server/ca-parts/02-stepca-root.crt
+      {{ openvpn_stepca_crl_url }}
+      | openssl crl -inform DER -out /tmp/crl.pem.tmp
+      && mv /tmp/crl.pem.tmp /etc/openvpn/server/crl.pem
+  when: stepca_host is defined
+
 # ---- OpenVPN server ----
 
 - name: Install OpenVPN
