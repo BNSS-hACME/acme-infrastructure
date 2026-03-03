@@ -1,0 +1,13 @@
+---
+- name: Bring up LAN connection
+  ansible.builtin.command: nmcli con up "{{ lan_interface }}-lan"
+  changed_when: true
+
+- name: Restart dnsmasq
+  ansible.builtin.service:
+    name: dnsmasq
+    state: restarted
+
+- name: Save iptables rules
+  ansible.builtin.shell: iptables-save > /etc/iptables/rules.v4
+  changed_when: true

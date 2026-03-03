@@ -1,0 +1,72 @@
+---
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - dnsmasq
+      - iptables
+      - iptables-persistent
+      - netfilter-persistent
+    state: present
+    update_cache: true
+
+- name: Configure eth1 as static LAN interface (NetworkManager)
+  community.general.nmcli:
+    type: ethernet
+    conn_name: "{{ lan_interface }}-lan"
+    ifname: "{{ lan_interface }}"
+    ip4: "{{ lan_ip }}/{{ lan_prefix }}"
+    never_default4: true
+    state: present
+  notify: Bring up LAN connection
+
+- name: Configure dnsmasq DHCP server on LAN interface
+  ansible.builtin.copy:
+    dest: /etc/dnsmasq.d/lan.conf
+    content: |
+      # Serve DHCP only on LAN (eth1), not on WAN
+      interface={{ lan_interface }}
+      bind-interfaces
+      dhcp-range={{ dhcp_range_start }},{{ dhcp_range_end }},{{ lan_netmask }},{{ dhcp_lease_time }}
+    mode: "0644"
+  notify: Restart dnsmasq
+
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: NAT masquerade outbound traffic on WAN interface
+  ansible.builtin.iptables:
+    table: nat
+    chain: POSTROUTING
+    out_interface: "{{ wan_interface }}"
+    jump: MASQUERADE
+  notify: Save iptables rules
+
+- name: Allow forwarded traffic from LAN to WAN
+  ansible.builtin.iptables:
+    chain: FORWARD
+    in_interface: "{{ lan_interface }}"
+    out_interface: "{{ wan_interface }}"
+    jump: ACCEPT
+  notify: Save iptables rules
+
+- name: Allow established/related traffic back from WAN to LAN
+  ansible.builtin.iptables:
+    chain: FORWARD
+    in_interface: "{{ wan_interface }}"
+    out_interface: "{{ lan_interface }}"
+    ctstate:
+      - ESTABLISHED
+      - RELATED
+    jump: ACCEPT
+  notify: Save iptables rules
+
+- name: Enable dnsmasq service
+  ansible.builtin.service:
+    name: dnsmasq
+    enabled: true
+    state: started
