@@ -22,8 +22,8 @@ services:
       - /opt/keycloak/import:/opt/keycloak/data/import
       - keycloak_data:/opt/keycloak/data
     environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD={{ vault_keycloak_admin_password }}
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD={{ vault_keycloak_admin_password }}
       - KC_HOSTNAME={{ inventory_hostname }}
       - KC_HOSTNAME_STRICT=false
       - KC_HTTP_ENABLED=false

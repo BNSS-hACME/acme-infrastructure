@@ -58,3 +58,9 @@
     owner: vagrant
     group: vagrant
     mode: '0644'
+
+- name: Fetch PKCS12 to control machine Downloads
+  ansible.builtin.fetch:
+    src: "{{ wifi_cert_export_dir }}/{{ cert_name }}.p12"
+    dest: "~/Downloads/"
+    flat: true

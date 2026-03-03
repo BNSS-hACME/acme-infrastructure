@@ -3,6 +3,7 @@ vpn.server.acme
 dns.server.acme
 cloud.server.acme
 auth.server.acme
+secure.server.acme
 dvwa.server.acme
 ai.server.acme
 rpi1.server.acme
@@ -38,3 +39,11 @@ auth.server.acme
 [raspberrypi]
 rpi1.server.acme
 rpi2.server.acme
+
+[secure]
+secure.server.acme
+
+[oidc]
+auth.server.acme
+secure.server.acme
+cloud.server.acme

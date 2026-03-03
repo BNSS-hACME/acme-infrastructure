@@ -9,3 +9,8 @@ ai_ollama_models:
 firewall:
   ports:
     - 11434
+  allowed_subnets:
+    - 10.0.10.0/24 # Stockholm
+    - 10.0.20.0/24 # London
+    - 10.0.50.0/24 # Servers(in Stockholm)
+    - 10.0.11.0/24 # VPN Clients
