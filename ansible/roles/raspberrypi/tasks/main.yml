@@ -1,0 +1,66 @@
+---
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - dnsmasq
+      - nftables
+    state: present
+    update_cache: true
+
+- name: Configure eth1 as static LAN interface (NetworkManager keyfile)
+  ansible.builtin.template:
+    src: eth1-lan.nmconnection.j2
+    dest: "/etc/NetworkManager/system-connections/{{ raspberrypi_lan_interface }}-lan.nmconnection"
+    mode: "0600"
+  notify:
+    - Reload NM connections
+    - Bring up LAN connection
+
+- name: Configure dnsmasq DHCP server on LAN interface
+  ansible.builtin.copy:
+    dest: /etc/dnsmasq.d/lan.conf
+    content: |
+      # Serve DHCP only on LAN (eth1), not on WAN
+      interface={{ raspberrypi_lan_interface }}
+      bind-dynamic
+      dhcp-range={{ raspberrypi_dhcp_range_start }},{{ raspberrypi_dhcp_range_end }},{{ raspberrypi_lan_netmask }},{{ raspberrypi_dhcp_lease_time }}
+      # Always forward DNS to a fixed upstream, ignore /etc/resolv.conf
+      no-resolv
+      server={{ raspberrypi_upstream_dns }}
+    mode: "0644"
+  notify: Restart dnsmasq
+
+- name: Override NetworkManager global DNS to use fixed upstream
+  ansible.builtin.copy:
+    dest: /etc/NetworkManager/conf.d/dns.conf
+    content: |
+      [global-dns-domain-*]
+      servers={{ raspberrypi_upstream_dns }}
+    mode: "0644"
+  notify: Reload NetworkManager
+
+- name: Enable IPv4 forwarding (persistent)
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-raspberrypi.conf
+    content: "net.ipv4.ip_forward = 1\n"
+    mode: "0644"
+  notify: Apply sysctl
+
+- name: Deploy nftables NAT ruleset
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    mode: "0644"
+  notify: Reload nftables
+
+- name: Enable nftables service
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: started
+
+- name: Enable dnsmasq service
+  ansible.builtin.service:
+    name: dnsmasq
+    enabled: true
+    state: started

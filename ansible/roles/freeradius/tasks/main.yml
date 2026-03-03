@@ -55,20 +55,20 @@
 
 - name: Generate RADIUS certificate
   ansible.builtin.shell: |
-    step ca certificate radius.server.acme \
-      /etc/freeradius/certs/radius.crt \
-      /etc/freeradius/certs/radius.key \
+    step ca certificate auth.server.acme \
+      /etc/freeradius/3.0/certs/auth.server.acme.crt \
+      /etc/freeradius/3.0/certs/auth.server.acme.key \
       --ca-url https://auth.server.acme:9000 \
       --root /etc/step-ca/certs/root_ca.crt \
       --password-file /etc/step-ca/password.txt
   args:
-    creates: /etc/freeradius/certs/radius.crt
+    creates: /etc/freeradius/3.0/certs/auth.server.acme.crt
   notify: Restart FreeRADIUS
 
 - name: Copy Root CA certificate
   ansible.builtin.copy:
     src: /etc/step-ca/certs/root_ca.crt
-    dest: /etc/freeradius/certs/root_ca.crt
+    dest: /etc/freeradius/3.0/certs/root_ca.crt
     remote_src: true
     owner: freerad
     group: freerad
@@ -76,7 +76,7 @@
 
 - name: Fix ownership of RADIUS certificates
   ansible.builtin.file:
-    path: /etc/freeradius/certs
+    path: /etc/freeradius/3.0/certs
     owner: freerad
     group: freerad
     recurse: true
@@ -89,3 +89,45 @@
     group: freerad
     mode: "0640"
   notify: Restart FreeRADIUS
+
+- name: Create CA bundle (Intermediate + Root)
+  ansible.builtin.shell: >
+    cat /etc/step-ca/certs/intermediate_ca.crt
+    /etc/step-ca/certs/root_ca.crt
+    > /etc/freeradius/3.0/certs/ca_bundle.pem
+  args:
+    creates: /etc/freeradius/3.0/certs/ca_bundle.pem
+
+- name: Set permissions on CA bundle
+  ansible.builtin.file:
+    path: /etc/freeradius/3.0/certs/ca_bundle.pem
+    owner: freerad
+    group: freerad
+    mode: "0640"
+
+- name: Set permissions on CA bundle
+  ansible.builtin.file:
+    path: /etc/freeradius/3.0/certs/ca_bundle.pem
+    owner: freerad
+    group: freerad
+    mode: "0640"
+- name: Write freeradius eap config
+  ansible.builtin.template:
+    src: eap.j2
+    dest: /etc/freeradius/3.0/mods-available/eap
+    owner: freerad
+    group: freerad
+    mode: "0640"
+  notify: Restart FreeRADIUS
+
+# - name: Configure FreeRADIUS TLS (step-ca integration)
+#  blockinfile:
+#    path: /etc/freeradius/3.0/mods-enabled/eap
+#    marker: "# {mark} ANSIBLE TLS CONFIG"
+#    block: |
+#      tls-config tls-common {
+#          certificate_file = /etc/freeradius/3.0/certs/auth.server.acme.crt
+#          private_key_file = /etc/freeradius/3.0/certs/auth.server.acme.key
+#          ca_file = /etc/freeradius/3.0/certs/ca_bundle.pem
+#      }
+#  notify: Restart FreeRADIUS

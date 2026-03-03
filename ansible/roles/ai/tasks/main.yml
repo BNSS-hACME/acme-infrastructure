@@ -6,19 +6,6 @@
     state: present
     update_cache: true
 
-- name: Download Ollama installer
-  become: true
-  ansible.builtin.get_url:
-    url: https://ollama.com/install.sh
-    dest: /tmp/ollama-install.sh
-    mode: "0755"
-
-- name: Install Ollama
-  become: true
-  ansible.builtin.command: /bin/sh /tmp/ollama-install.sh
-  args:
-    creates: /usr/local/bin/ollama
-
 - name: Ensure ollama group exists
   become: true
   ansible.builtin.group:
@@ -36,6 +23,19 @@
     home: /var/lib/ollama
     shell: /usr/sbin/nologin
     state: present
+
+- name: Download Ollama installer
+  become: true
+  ansible.builtin.get_url:
+    url: https://ollama.com/install.sh
+    dest: /tmp/ollama-install.sh
+    mode: "0755"
+
+- name: Install Ollama
+  become: true
+  ansible.builtin.command: /bin/sh /tmp/ollama-install.sh
+  args:
+    creates: /usr/local/bin/ollama
 
 - name: Configure Ollama systemd service
   become: true
