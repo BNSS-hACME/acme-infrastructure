@@ -1,0 +1,6 @@
+---
+- name: Install Host Protection Tools
+  hosts: dvwa
+  become: true
+  roles:
+    - hostprotection

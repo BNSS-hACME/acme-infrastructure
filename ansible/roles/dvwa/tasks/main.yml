@@ -145,5 +145,9 @@
 - name: Ensure Apache is running with DVWA configuration
   ansible.builtin.service:
     name: apache2
-    state: started
+    state: restarted
     enabled: true
+  when: dvwa_enable_rewrite_module.changed
+        or dvwa_site_conf.changed
+        or dvwa_disable_default_site.changed
+        or dvwa_enable_dvwa_site.changed
