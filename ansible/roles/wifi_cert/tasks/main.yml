@@ -64,3 +64,10 @@
     src: "{{ wifi_cert_export_dir }}/{{ cert_name }}.p12"
     dest: "~/Downloads/"
     flat: true
+
+- name: Fetch Root CA to control machine Downloads
+  ansible.builtin.fetch:
+    src: "/etc/step-ca/certs/root_ca.crt"
+    dest: "{{ lookup('env','HOME') }}/Downloads/"
+    flat: true
+
