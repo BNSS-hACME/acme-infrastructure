@@ -161,7 +161,7 @@
 - name: Get CRL issuer hash
   ansible.builtin.command:
     cmd: openssl crl -noout -hash -in /tmp/stepca-crl.pem
-  register: stepca_crl_hash
+  register: openvpn_stepca_crl_hash
   changed_when: false
   when:
     - stepca_host is defined
@@ -170,7 +170,7 @@
 - name: Install CRL under issuer-hash filename
   ansible.builtin.copy:
     src: /tmp/stepca-crl.pem
-    dest: "/etc/openvpn/server/crl/{{ stepca_crl_hash.stdout }}.r0"
+    dest: "/etc/openvpn/server/crl/{{ openvpn_stepca_crl_hash.stdout }}.r0"
     mode: "0644"
     remote_src: true
   when:
@@ -192,10 +192,10 @@
       curl -sf --cacert /etc/openvpn/server/ca-parts/02-stepca-root.crt
       {{ openvpn_stepca_crl_url }} -o /tmp/stepca-crl.der
       && openssl crl -inform DER -in /tmp/stepca-crl.der -out /tmp/stepca-crl.pem
-      && cp /tmp/stepca-crl.pem /etc/openvpn/server/crl/{{ stepca_crl_hash.stdout }}.r0
+      && cp /tmp/stepca-crl.pem /etc/openvpn/server/crl/{{ openvpn_stepca_crl_hash.stdout }}.r0
   when:
     - stepca_host is defined
-    - stepca_crl_hash is defined
+    - openvpn_stepca_crl_hash is defined
 
 # ---- OpenVPN server ----
 
