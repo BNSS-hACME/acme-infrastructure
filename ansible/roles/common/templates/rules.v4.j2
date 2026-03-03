@@ -17,8 +17,8 @@ COMMIT
 
 -A INPUT -i lo -j ACCEPT
 
--A INPUT -p icmp -j ACCEPT -m comment --comment "Allow Ping"
--A INPUT -p tcp --dport 22 -j ACCEPT -m comment --comment "Allow SSH globally"
+-A INPUT -p icmp -m comment --comment "Allow Ping" -j ACCEPT
+-A INPUT -p tcp --dport 22 -m comment --comment "Allow SSH globally" -j ACCEPT
 
 {% if 'router' in group_names %}
 -A FORWARD -i {{ int_if | default('enp0s9') }} -o {{ ext_if | default('enp0s8') }} -j ACCEPT
@@ -29,12 +29,12 @@ COMMIT
 {% for port in firewall.ports %}
 {% if (firewall | default({}))['allowed_subnets'] is defined %}
 {% for subnet in firewall.allowed_subnets %}
--A INPUT -p tcp --dport {{ port }} -s {{ subnet }} -j ACCEPT -m comment --comment "Allow TCP {{ port }} from {{ subnet }}"
--A INPUT -p udp --dport {{ port }} -s {{ subnet }} -j ACCEPT -m comment --comment "Allow UDP {{ port }} from {{ subnet }}"
+-A INPUT -p tcp --dport {{ port }} -s {{ subnet }} -m comment --comment "Allow TCP {{ port }} from {{ subnet }}" -j ACCEPT
+-A INPUT -p udp --dport {{ port }} -s {{ subnet }} -m comment --comment "Allow UDP {{ port }} from {{ subnet }}" -j ACCEPT
 {% endfor %}
 {% else %}
--A INPUT -p tcp --dport {{ port }} -j ACCEPT -m comment --comment "Allow TCP {{ port }} globally"
--A INPUT -p udp --dport {{ port }} -j ACCEPT -m comment --comment "Allow UDP {{ port }} globally"
+-A INPUT -p tcp --dport {{ port }} -m comment --comment "Allow TCP {{ port }} globally" -j ACCEPT
+-A INPUT -p udp --dport {{ port }} -m comment --comment "Allow UDP {{ port }} globally" -j ACCEPT
 {% endif %}
 {% endfor %}
 {% endif %}
