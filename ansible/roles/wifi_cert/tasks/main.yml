@@ -70,4 +70,3 @@
     src: "/etc/step-ca/certs/root_ca.crt"
     dest: "{{ lookup('env','HOME') }}/Downloads/"
     flat: true
-
