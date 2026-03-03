@@ -129,7 +129,7 @@
 # ---- CRL from Step CA ----
 
 - name: Download CRL from Step CA (DER format)
-  ansible.builtin.get_url:
+  ansible.builtin.uri:
     url: "{{ openvpn_stepca_crl_url }}"
     dest: /tmp/stepca-crl.der
     ca_path: /etc/openvpn/server/ca-parts/02-stepca-root.crt
@@ -146,6 +146,12 @@
   when:
     - stepca_host is defined
     - openvpn_stepca_root_stat.stat.exists
+
+- name: Install cron
+  ansible.builtin.apt:
+    name: cron
+    state: present
+  when: stepca_host is defined
 
 - name: Install cron job to refresh CRL from Step CA every 6 hours
   ansible.builtin.cron:
