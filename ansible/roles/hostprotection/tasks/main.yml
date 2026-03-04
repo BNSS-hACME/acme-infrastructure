@@ -28,7 +28,6 @@
   ansible.builtin.apt:
     name:
       - libapache2-mod-security2
-      - modsecurity-crs
       - apache2
     state: present
     update_cache: true
@@ -71,12 +70,74 @@
   when: hostprotection_modsecurity_active_conf.stat.exists or hostprotection_modsecurity_recommended_conf.stat.exists
   notify: Restart Apache
 
-- name: Enable OWASP CRS Apache config
+- name: Create CRS directory
+  ansible.builtin.file:
+    path: /etc/crs4
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download OWASP CRS release
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/coreruleset/coreruleset/releases/download/v{{ hostprotection_crs_version }}/coreruleset-{{ hostprotection_crs_version }}-minimal.tar.gz
+    dest: "/tmp/coreruleset-{{ hostprotection_crs_version }}.tar.gz"
+    mode: "0644"
+
+- name: Extract CRS release
+  ansible.builtin.unarchive:
+    src: "/tmp/coreruleset-{{ hostprotection_crs_version }}.tar.gz"
+    dest: /etc/crs4
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+    creates: /etc/crs4/crs-setup.conf.example
+
+- name: Create CRS setup config from example
+  ansible.builtin.copy:
+    src: /etc/crs4/crs-setup.conf.example
+    dest: /etc/crs4/crs-setup.conf
+    remote_src: true
+    force: false
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Apache
+
+- name: Deploy CRS Apache include configuration
+  ansible.builtin.template:
+    src: modsecurity-crs.conf.j2
+    dest: /etc/apache2/conf-available/modsecurity-crs.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Apache
+
+- name: Enable CRS Apache config
   ansible.builtin.command: a2enconf modsecurity-crs
   register: hostprotection_a2enconf_modsecurity_crs
-  changed_when: hostprotection_a2enconf_modsecurity_crs.rc == 0 and ('already enabled' not in (hostprotection_a2enconf_modsecurity_crs.stdout | default('')))
+  changed_when: "'already enabled' not in (hostprotection_a2enconf_modsecurity_crs.stdout | default(''))"
   failed_when: hostprotection_a2enconf_modsecurity_crs.rc != 0 and ('already enabled' not in (hostprotection_a2enconf_modsecurity_crs.stdout | default('')))
   notify: Restart Apache
+
+- name: Deploy ModSecurity audit logging configuration
+  ansible.builtin.template:
+    src: modsecurity-logging.conf.j2
+    dest: /etc/modsecurity/modsecurity-logging.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Apache
+
+- name: Ensure ModSecurity audit log file exists
+  ansible.builtin.file:
+    path: /var/log/apache2/modsec_audit.log
+    state: touch
+    owner: www-data
+    group: adm
+    mode: "0640"
+  changed_when: false
 
 - name: Disable SSL
   ansible.builtin.command: a2dissite default-ssl
