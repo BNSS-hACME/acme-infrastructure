@@ -2,13 +2,14 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import time
 
 from openai import APIConnectionError, APIError, APITimeoutError, OpenAI
 
 API_BASE_URL = "http://localhost:11434/v1"
-MODEL_NAME = "qwen3:0.6b"
+MODEL_NAME = "qwen3:4b-Instruct"
 DEFAULT_ALERT_DIR = Path.home() / ".llm_pipeline"
 DEFAULT_ALERT_DIR.mkdir(mode=0o700, exist_ok=True)
 DEFAULT_ALERT_FILE = str(DEFAULT_ALERT_DIR / "llm_alerts.log")
@@ -22,6 +23,53 @@ ALLOWED_ATTACK_TYPES = {
     "Automated vulnerability scanning",
     "Benign/normal traffic",
 }
+
+_IP_PATTERN = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+_HOSTNAME_PATTERN = re.compile(
+    r"\b[\w.-]+\.(?:acme|local|internal|corp|intranet)\b", re.IGNORECASE
+)
+
+
+def pseudonymize_logs(log_text):
+    """Replace real IPs and internal hostnames with deterministic fakes.
+
+    Returns (sanitized_text, reverse_map) so callers can de-pseudonymize.
+    """
+    ip_map = {}
+    counter = [1]
+
+    def _replace_ip(match):
+        real_ip = match.group(0)
+        if real_ip not in ip_map:
+            ip_map[real_ip] = f"10.0.0.{counter[0]}"
+            counter[0] += 1
+        return ip_map[real_ip]
+
+    sanitized = _IP_PATTERN.sub(_replace_ip, log_text)
+    sanitized = _HOSTNAME_PATTERN.sub("host.example.net", sanitized)
+
+    reverse_map = {fake: real for real, fake in ip_map.items()}
+    return sanitized, reverse_map
+
+
+def depseudonymize_findings(findings, reverse_map):
+    """Restore original IPs in evidence and explanation fields."""
+    if not reverse_map:
+        return findings
+
+    def _restore(text):
+        for fake, real in reverse_map.items():
+            text = text.replace(fake, real)
+        return text
+
+    restored = []
+    for finding in findings:
+        entry = dict(finding)
+        entry["evidence"] = [_restore(e) for e in entry.get("evidence", [])]
+        entry["explanation"] = _restore(entry.get("explanation", ""))
+        restored.append(entry)
+    return restored
+
 
 SAMPLE_LOGS = """
 192.168.1.10 - - [25/Feb/2026:10:00:01 +0100] "GET /index.html HTTP/1.1" 200 1024 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
@@ -179,7 +227,8 @@ def read_last_lines(log_file, line_count):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze server logs using an OpenAI-compatible API.")
-    parser.add_argument("--log-file", help="Path to a log file")
+    parser.add_argument("--log-file", help="Path to a log file",
+                        default="/var/log/apache2/dvwa_access.log")
     parser.add_argument("--lines", type=int, default=50, help="Number of last log lines to read")
     parser.add_argument("--stdin", action="store_true", help="Read logs from stdin")
     parser.add_argument("--sample", action="store_true", help="Use sample logs")
@@ -189,6 +238,8 @@ def parse_args():
     parser.add_argument("--api-key", default=None, help="API key (overrides provider default)")
     parser.add_argument("--prompt-file", default=str(DEFAULT_PROMPT_FILE), help="Path to prompt file")
     parser.add_argument("--alert-file", default=DEFAULT_ALERT_FILE, help="File for detected alerts")
+    parser.add_argument("--pseudonymize", action="store_true",
+                        help="Anonymize IPs and hostnames before sending to the LLM")
     return parser.parse_args()
 
 
@@ -240,12 +291,22 @@ def main():
         print("No log data found to analyze.", file=sys.stderr)
         return 2
 
+    reverse_map = {}
+    if args.pseudonymize:
+        log_chunk, reverse_map = pseudonymize_logs(log_chunk)
+        print("Pseudonymized log data before sending to LLM.")
+
     print("Analyzing logs...")
     analysis_result = analyze_logs_with_llm(log_chunk, prompt_template, client)
     validated = validate_result(analysis_result)
 
     if validated is None:
         return 1
+
+    if reverse_map:
+        validated["findings"] = depseudonymize_findings(
+            validated["findings"], reverse_map
+        )
 
     print("\n--- LLM Analysis Result ---")
     print(json.dumps(validated, indent=2, ensure_ascii=False))
