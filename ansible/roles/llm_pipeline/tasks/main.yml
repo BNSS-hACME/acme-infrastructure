@@ -28,3 +28,32 @@
     requirements: /opt/llm_pipeline/requirements.txt
     virtualenv: /opt/llm_pipeline/venv
     virtualenv_command: python3 -m venv
+
+- name: Install inotify-tools
+  ansible.builtin.package:
+    name: inotify-tools
+    state: present
+
+- name: Copy watch_log.sh to server
+  ansible.builtin.template:
+    src: watch_log.sh.j2
+    dest: /opt/llm_pipeline/watch_log.sh
+    mode: "0755"
+    owner: root
+    group: root
+  notify: Restart llm-log-watcher
+
+- name: Copy service file to server
+  ansible.builtin.template:
+    src: llm-log-watcher.service.j2
+    dest: /etc/systemd/system/llm-log-watcher.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart llm-log-watcher
+
+- name: Ensure llm-log-watcher is enabled and started
+  ansible.builtin.systemd:
+    name: llm-log-watcher
+    enabled: true
+    state: started

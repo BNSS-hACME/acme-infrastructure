@@ -1,0 +1,9 @@
+---
+llm_pipeline_log_file: "/var/log/apache2/dvwa_access.log"
+llm_pipeline_lines: 50
+llm_pipeline_cooldown: 30
+llm_pipeline_pseudonymize: true
+llm_pipeline_provider: "ollama" # Standardmäßig lokal
+llm_pipeline_model: "qwen2.5:0.5b"
+llm_pipeline_base_url: "http://localhost:11434/v1"
+llm_pipeline_api_key: "ollama"

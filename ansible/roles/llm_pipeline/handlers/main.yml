@@ -1,0 +1,6 @@
+---
+- name: Restart llm-log-watcher
+  ansible.builtin.systemd:
+    name: llm-log-watcher
+    state: restarted
+    daemon_reload: true

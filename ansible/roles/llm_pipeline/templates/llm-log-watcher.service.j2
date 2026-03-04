@@ -1,0 +1,17 @@
+[Unit]
+Description=LLM Log Analysis Watcher
+After=network.target apache2.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/llm_pipeline/watch_log.sh
+Restart=always
+RestartSec=5
+
+# Resource limits
+CPUQuota=20%
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

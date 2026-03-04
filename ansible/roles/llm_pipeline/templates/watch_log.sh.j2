@@ -1,0 +1,23 @@
+#!/bin/bash
+# Watch logs and trigger LLM pipeline
+LOG_FILE="{{ llm_pipeline_log_file }}"
+PIPELINE="/opt/llm_pipeline/basic_ai_pipeline.py"
+VENV="/opt/llm_pipeline/venv/bin/python3"
+
+echo "Starting LLM log watcher on $LOG_FILE..."
+
+inotifywait -m -e modify "$LOG_FILE" |
+while read -r directory event filename; do
+    echo "Change detected in $LOG_FILE, triggering analysis..."
+    $VENV "$PIPELINE" \
+        --log-file "$LOG_FILE" \
+        --lines {{ llm_pipeline_lines }} \
+        --provider "{{ llm_pipeline_provider }}" \
+        --model "{{ llm_pipeline_model }}" \
+        --base-url "{{ llm_pipeline_base_url }}" \
+        --api-key "{{ llm_pipeline_api_key }}" \
+        {% if llm_pipeline_pseudonymize %}--pseudonymize{% endif %}
+    
+    echo "Analysis complete. Waiting {{ llm_pipeline_cooldown }}s cooldown..."
+    sleep {{ llm_pipeline_cooldown }}
+done
