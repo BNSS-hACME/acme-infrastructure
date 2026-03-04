@@ -220,11 +220,45 @@ def read_last_lines(log_file, line_count):
     if not path.exists():
         raise FileNotFoundError(f"Log file not found: {log_file}")
 
-    with path.open("r", encoding="utf-8", errors="replace") as handle:
-        lines = handle.readlines()
-    return "".join(lines[-line_count:]).strip()
+    if line_count <= 0:
+        return ""
 
+    # Tail-style reader: seek from end and read blocks until we have enough lines.
+    block_size = 8192
+    newline_byte = b"\n"
+    chunks = []
+    lines_found = 0
 
+    with path.open("rb") as handle:
+        handle.seek(0, os.SEEK_END)
+        file_size = handle.tell()
+
+        while file_size > 0 and lines_found <= line_count:
+            read_size = min(block_size, file_size)
+            # Move the cursor back by read_size bytes and read that block.
+            handle.seek(file_size - read_size, os.SEEK_SET)
+            chunk = handle.read(read_size)
+            chunks.append(chunk)
+            lines_found += chunk.count(newline_byte)
+            file_size -= read_size
+            if file_size <= 0:
+                break
+
+    if not chunks:
+        return ""
+
+    # Reconstruct the tail portion in the correct order.
+    data = b"".join(reversed(chunks))
+    # Split into lines and select the last N lines.
+    byte_lines = data.splitlines()
+    if not byte_lines:
+        return ""
+    tail_lines = byte_lines[-line_count:]
+
+    text_lines = [
+        line.decode("utf-8", errors="replace") for line in tail_lines
+    ]
+    return "\n".join(text_lines).strip()
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze server logs using an OpenAI-compatible API.")
     parser.add_argument("--log-file", help="Path to a log file",

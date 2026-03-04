@@ -197,8 +197,13 @@ def compute_metrics(alerts, ground_truth):
     """
     gt_types = Counter()
     for gt in ground_truth:
-        if gt.get("malicious"):
-            gt_types[gt["attack_type"]] += 1
+        if not gt.get("malicious"):
+            continue
+        at = gt.get("attack_type")
+        if not at:
+            # Skip malformed ground-truth entries without a usable attack type
+            continue
+        gt_types[at] += 1
 
     pred_types = Counter()
     for a in alerts:
