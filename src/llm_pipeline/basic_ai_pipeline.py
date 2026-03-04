@@ -249,8 +249,8 @@ def resolve_provider_settings(args):
         api_key = args.api_key or "ollama"
         return base_url, api_key
 
-    base_url = args.base_url or "https://api.openai.com/v1"
-    api_key = args.api_key or os.getenv("OPENAI_API_KEY")
+    base_url = args.base_url or "https://integrate.api.nvidia.com/v1"
+    api_key = args.api_key or ""
     if not api_key:
         raise ValueError("An API key is required for provider 'external' (use --api-key or OPENAI_API_KEY).")
     return base_url, api_key
