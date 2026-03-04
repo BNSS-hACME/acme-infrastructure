@@ -38,5 +38,7 @@
       --log-file {{ llm_pipeline_log_file }}
       --model {{ llm_pipeline_model_name }}
       --base-url {{ llm_pipeline_api_base_url }}
+      --alert-file {{ llm_pipeline_alert_file }}
+      --prompt-file {{ llm_pipeline_prompt_file }}
     user: "{{ llm_pipeline_cron_user }}"
     state: present
