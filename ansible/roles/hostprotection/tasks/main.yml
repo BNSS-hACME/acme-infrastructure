@@ -31,6 +31,14 @@
       - apache2
     state: present
     update_cache: true
+    install_recommends: false
+
+- name: Ensure default Debian modsecurity-crs is absent
+  become: true
+  ansible.builtin.apt:
+    name: modsecurity-crs
+    state: absent
+  notify: Restart Apache
 
 - name: Enable ModSecurity Apache module
   ansible.builtin.command: a2enmod security2
@@ -38,36 +46,13 @@
     creates: /etc/apache2/mods-enabled/security2.load
   notify: Restart Apache
 
-- name: Check if ModSecurity recommended config exists
-  ansible.builtin.stat:
-    path: /etc/modsecurity/modsecurity.conf-recommended
-  register: hostprotection_modsecurity_recommended_conf
-
-- name: Check if active ModSecurity config exists
-  ansible.builtin.stat:
-    path: /etc/modsecurity/modsecurity.conf
-  register: hostprotection_modsecurity_active_conf
-
-- name: Create active ModSecurity config from recommended defaults
-  ansible.builtin.copy:
-    src: /etc/modsecurity/modsecurity.conf-recommended
+- name: Deploy ModSecurity configuration
+  ansible.builtin.template:
+    src: modsecurity.conf.j2
     dest: /etc/modsecurity/modsecurity.conf
     owner: root
     group: root
     mode: "0644"
-    remote_src: true
-  when:
-    - hostprotection_modsecurity_recommended_conf.stat.exists
-    - not hostprotection_modsecurity_active_conf.stat.exists
-  notify: Restart Apache
-
-- name: Ensure ModSecurity rule engine is enabled
-  ansible.builtin.lineinfile:
-    path: /etc/modsecurity/modsecurity.conf
-    regexp: '^\s*SecRuleEngine\s+'
-    line: SecRuleEngine On
-    backup: true
-  when: hostprotection_modsecurity_active_conf.stat.exists or hostprotection_modsecurity_recommended_conf.stat.exists
   notify: Restart Apache
 
 - name: Create CRS directory
