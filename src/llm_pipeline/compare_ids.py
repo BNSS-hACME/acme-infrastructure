@@ -19,9 +19,8 @@ Usage examples:
 """
 import argparse
 import json
-import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 
 # ─── OWASP CRS Rule-ID → Attack-Type Mapping ────────────────────────────────
@@ -55,90 +54,81 @@ ATTACK_TYPES = [
     "Automated vulnerability scanning",
 ]
 
-# ─── ModSecurity Audit Log Parser ────────────────────────────────────────────
-_BOUNDARY_RE = re.compile(r"^--([0-9a-f]{8})-([A-Z])--$")
-_RULE_ID_RE = re.compile(r'\[id "(\d+)"\]')
-_RULE_MSG_RE = re.compile(r'\[msg "([^"]+)"\]')
-_SEVERITY_RE = re.compile(r'\[severity "([^"]+)"\]')
-_URI_RE = re.compile(r"^(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS) (\S+)")
-
-
 def parse_modsec_audit_log(path):
-    """Parse a ModSecurity serial audit log into a list of alert dicts.
+    """Parse a ModSecurity JSON audit log into a list of alert dicts.
 
-    Each entry in the log is delimited by boundary markers of the form
-    --<hex-id>-<section-letter>--  (e.g. --a1b2c3d4-A--)
-    Sections: A=header, B=request hdrs, C=req body, F=resp hdrs, H=trailer, Z=end.
+    Expects one JSON object per line, where each object represents a complete
+    audit entry with transaction details and matched rules in the 'messages' array.
+    
+    To configure ModSecurity for JSON output:
+        SecAuditLogFormat JSON
     """
     alerts = []
     if not Path(path).exists():
         return alerts
 
     with open(path, encoding="utf-8", errors="replace") as fh:
-        lines = fh.readlines()
-
-    current_id = None
-    current_section = None
-    sections = defaultdict(list)
-
-    def _flush():
-        """Process one complete audit entry."""
-        h_text = "\n".join(sections.get("H", []))
-        b_text = "\n".join(sections.get("B", []))
-
-        # Extract request URI from section B (request headers)
-        uri = ""
-        for bline in sections.get("B", []):
-            m = _URI_RE.match(bline)
-            if m:
-                uri = m.group(1)
-                break
-
-        # Extract all matched rule IDs from section H (trailer)
-        for rule_match in _RULE_ID_RE.finditer(h_text):
-            rule_id = rule_match.group(1)
-            prefix = rule_id[:3]
-            attack_type = CRS_RULE_MAP.get(prefix)
-            if attack_type is None:
+        for lineno, line in enumerate(fh, 1):
+            line = line.strip()
+            if not line:
                 continue
-
-            msg_match = _RULE_MSG_RE.search(h_text[rule_match.start():rule_match.end() + 200])
-            severity_match = _SEVERITY_RE.search(h_text[rule_match.start():rule_match.end() + 200])
-
-            alerts.append({
-                "source": "ModSecurity",
-                "malicious": True,
-                "attack_type": attack_type,
-                "rule_id": int(rule_id),
-                "message": msg_match.group(1) if msg_match else "",
-                "severity": severity_match.group(1) if severity_match else "UNKNOWN",
-                "uri": uri,
-                "confidence": 1.0,
-            })
-
-    for line in lines:
-        line = line.rstrip("\n")
-        bm = _BOUNDARY_RE.match(line)
-        if bm:
-            entry_id, section = bm.group(1), bm.group(2)
-            if section == "A":
-                if current_id is not None:
-                    _flush()
-                current_id = entry_id
-                sections = defaultdict(list)
-            current_section = section
-            continue
-        if current_section and current_id:
-            sections[current_section].append(line)
-
-    # flush last entry
-    if current_id is not None:
-        _flush()
-
+            
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError as e:
+                print(f"Warning: skipping malformed JSON on line {lineno}: {e}", file=sys.stderr)
+                continue
+            
+            # Extract transaction details
+            transaction = entry.get("transaction", {})
+            request = transaction.get("request", {})
+            uri = request.get("uri", "")
+            
+            # Process each matched rule in the messages array
+            messages = transaction.get("messages", [])
+            if not messages:
+                continue
+                
+            for msg in messages:
+                details = msg.get("details", {})
+                rule_id_str = details.get("ruleId", "")
+                
+                if not rule_id_str or not rule_id_str.isdigit():
+                    continue
+                
+                rule_id = int(rule_id_str)
+                prefix = rule_id_str[:3]
+                attack_type = CRS_RULE_MAP.get(prefix)
+                
+                # Skip rules we don't track (anomaly scores, etc.)
+                if attack_type is None:
+                    continue
+                
+                # Map numeric severity to descriptive labels
+                severity_map = {
+                    "0": "EMERGENCY",
+                    "1": "ALERT", 
+                    "2": "CRITICAL",
+                    "3": "ERROR",
+                    "4": "WARNING",
+                    "5": "NOTICE",
+                }
+                severity_num = details.get("severity", "")
+                severity = severity_map.get(str(severity_num), severity_num or "UNKNOWN")
+                
+                alerts.append({
+                    "source": "ModSecurity",
+                    "malicious": True,
+                    "attack_type": attack_type,
+                    "rule_id": rule_id,
+                    "message": msg.get("message", ""),
+                    "severity": severity,
+                    "uri": uri,
+                    "confidence": 1.0,
+                })
+    
     return alerts
 
-
-# ─── LLM Alert Log Parser ───────────────────────────────────────────────────
 
 def parse_llm_alert_log(path):
     """Parse the LLM pipeline alert log (one JSON object per line)."""
@@ -160,8 +150,6 @@ def parse_llm_alert_log(path):
                 print(f"Warning: skipping malformed JSON on line {lineno}", file=sys.stderr)
     return alerts
 
-
-# ─── Comparison Logic ────────────────────────────────────────────────────────
 
 def summarise_alerts(alerts, label):
     """Produce a per-attack-type summary."""
