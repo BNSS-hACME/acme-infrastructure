@@ -40,6 +40,12 @@
     state: absent
   notify: Restart Apache
 
+- name: Enable mod_unique_id for request correlation
+  ansible.builtin.command: a2enmod unique_id
+  args:
+    creates: /etc/apache2/mods-enabled/unique_id.load
+  notify: Restart Apache
+
 - name: Enable ModSecurity Apache module
   ansible.builtin.command: a2enmod security2
   args:
