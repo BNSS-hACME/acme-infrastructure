@@ -1,0 +1,49 @@
+---
+- name: Install requirements for loki
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - wget
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Ensure APT Keyring directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Grafana GPG key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /tmp/grafana.gpg.key
+    mode: "0644"
+
+- name: Dearmor Grafana GPG key
+  ansible.builtin.shell:
+    cmd: gpg --dearmor < /tmp/grafana.gpg.key > /etc/apt/keyrings/grafana.gpg
+    creates: /etc/apt/keyrings/grafana.gpg
+
+- name: Add Loki APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+    filename: grafana
+    state: present
+    update_cache: true
+
+- name: Install Loki and graphana
+  ansible.builtin.apt:
+    name:
+      - loki
+      - grafana
+      - promtail
+    state: present
+    update_cache: true
+
+- name: Enable and start Grafana service
+  ansible.builtin.systemd:
+    name: grafana-server
+    enabled: true
+    state: started
+    daemon_reload: true
