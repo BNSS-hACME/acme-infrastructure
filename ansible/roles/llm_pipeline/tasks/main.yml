@@ -28,3 +28,15 @@
     requirements: /opt/llm_pipeline/requirements.txt
     virtualenv: /opt/llm_pipeline/venv
     virtualenv_command: python3 -m venv
+
+- name: Add cron job for LLM pipeline
+  ansible.builtin.cron:
+    name: "LLM pipeline"
+    minute: "{{ llm_pipeline_cron_minute }}"
+    job: >-
+      /opt/llm_pipeline/venv/bin/python /opt/llm_pipeline/basic_ai_pipeline.py
+      --log-file {{ llm_pipeline_log_file }}
+      --model {{ llm_pipeline_model_name }}
+      --base-url {{ llm_pipeline_api_base_url }}
+    user: "{{ llm_pipeline_cron_user }}"
+    state: present
