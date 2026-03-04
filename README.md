@@ -36,7 +36,7 @@ Both sites share the same physical LAN subnet (`10.0.10.0/24`) and internal VM s
 | Certificate Authority | auth.server.acme   | 10.0.50.13             | Step CA, Keycloak OIDC, FreeRADIUS        |
 | VPN                   | vpn.server.acme    | 10.0.50.11             | OpenVPN server                            |
 | Cloud Storage         | cloud.server.acme  | 10.0.50.12             | Nextcloud with OIDC integration           |
-| Secure Web            | secure.server.acme | 10.0.50.20             | Apache HTTPS with OpenIDC authentication  |
+| Secure Web            | secure.server.acme | 10.0.50.20             | Apache HTTPS with OIDC authentication     |
 | AI                    | ai.server.acme     | 10.0.50.14             | AI service deployment                     |
 | DVWA                  | dvwa.server.acme   | 10.0.50.50             | Damn Vulnerable Web App (lab environment) |
 
