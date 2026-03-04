@@ -106,6 +106,8 @@ Vagrant.configure("2") do |config|
         iptables -A FORWARD -i $INT_IF -o $EXT_IF -j ACCEPT
       iptables -C FORWARD -i $EXT_IF -o $INT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
         iptables -A FORWARD -i $EXT_IF -o $INT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT
+      iptables -C FORWARD -i $EXT_IF -o $INT_IF -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -i $EXT_IF -o $INT_IF -j ACCEPT
 
       # Ensure iptables rules persist across reboots.
       export DEBIAN_FRONTEND=noninteractive
@@ -125,12 +127,16 @@ Vagrant.configure("2") do |config|
       ip route del 10.0.10.1 via 10.0.2.2 dev enp0s8 2>/dev/null || true
       # Route VPN client pool back to the VPN server so internal hosts can reply
       ip route replace 10.0.11.0/24 via 10.0.50.11 dev enp0s10
+      # London
+      ip route add 10.0.20.0/24 via 10.0.10.1 dev $EXT_IF 2>/dev/null || true
+      ip route add 10.0.30.0/24 via 10.0.10.1 dev $EXT_IF 2>/dev/null || true
     SHELL
 
     router.vm.provider :virtualbox do |vb|
       vb.name = "acme-router.server.acme"
       vb.memory = 2048
       vb.cpus = 1
+      vb.customize ["modifyvm", :id, "--macaddress2", "080027AABBCC"]
     end
   end
 
@@ -156,6 +162,7 @@ Vagrant.configure("2") do |config|
         fi
         ip route del default via 10.0.2.2 2>/dev/null || true
         ip route add default via 10.0.50.1 dev $INT_IF 2>/dev/null || true
+        ip route flush proto dhcp dev enp0s8 2>/dev/null || true
       SHELL
 
       if opts[:cloud_init]
