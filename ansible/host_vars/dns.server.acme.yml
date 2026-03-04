@@ -10,5 +10,5 @@ unbound_local_data:
   - "cloud.server.acme. IN A 10.0.50.12"
   - "auth.server.acme. IN A 10.0.50.13"
   - "ai.server.acme. IN A 10.0.50.14"
-  - "dvwa.server.acme. IN A 10.0.50.15"
+  - "dvwa.server.acme. IN A 10.0.50.50"
   - "secure.server.acme. IN A 10.0.50.20"
