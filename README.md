@@ -25,7 +25,14 @@ Internet / ISP
   dns  vpn  auth  cloud  ai  secure  dvwa
 ```
 
-Both sites share the same physical LAN subnet (`10.0.10.0/24`) and internal VM subnet (`10.0.50.0/24`). The Raspberry Pi at each site acts as a WAN/LAN pass-through router with NAT, placing the physical router (and in turn all VMs) behind it.
+There are two sites, Stockhlom and London. Each site has two subnets, internal and guest.
+
+- Internal Stockholm `10.0.10.0/24`
+- Internal London `10.0.20.0/24`
+- Guest Stockholm `10.0.15.0/24`
+- Guest London `10.0.25.0/24`
+
+On the Stockholm site internal VM subnet (`10.0.50.0/24`). The Raspberry Pi at each site acts as a WAN/LAN pass-through router with NAT, placing the physical router (and in turn all VMs in Stockholm) behind it.
 
 ### Virtual Machines
 
@@ -33,19 +40,21 @@ Both sites share the same physical LAN subnet (`10.0.10.0/24`) and internal VM s
 | --------------------- | ------------------ | ---------------------- | ----------------------------------------- |
 | Router                | router.server.acme | 10.0.10.50 / 10.0.50.1 | NAT gateway, bridges physical and VM LANs |
 | DNS                   | dns.server.acme    | 10.0.50.10             | Unbound DNS resolver                      |
-| Certificate Authority | auth.server.acme   | 10.0.50.13             | Step CA, Keycloak OIDC, FreeRADIUS        |
 | VPN                   | vpn.server.acme    | 10.0.50.11             | OpenVPN server                            |
 | Cloud Storage         | cloud.server.acme  | 10.0.50.12             | Nextcloud with OIDC integration           |
-| Secure Web            | secure.server.acme | 10.0.50.20             | Apache HTTPS with OIDC authentication     |
+| Certificate Authority | auth.server.acme   | 10.0.50.13             | Step CA, Keycloak OIDC, FreeRADIUS        |
 | AI                    | ai.server.acme     | 10.0.50.14             | AI service deployment                     |
-| DVWA                  | dvwa.server.acme   | 10.0.50.15             | Damn Vulnerable Web App (lab environment) |
+| Secure Web            | secure.server.acme | 10.0.50.20             | Apache HTTPS with OIDC authentication     |
+| DVWA                  | dvwa.server.acme   | 10.0.50.50             | Damn Vulnerable Web App (lab environment) |
 
 ### Physical Devices
 
-| Device | Host             | LAN IP       | Description                                              |
-| ------ | ---------------- | ------------ | -------------------------------------------------------- |
-| RPi 1  | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the stockholm physical router |
-| RPi 2  | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the london physical router    |
+| Device             | Host             | LAN IP       | Description                                              |
+| ------------------ | ---------------- | ------------ | -------------------------------------------------------- |
+| RPi 1              | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the stockholm physical router |
+| RPi 2              | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the london physical router    |
+| ASUS AC1900 Router | acme-stockholm   | 10.0.10.1    | Router and AP for Stockholm site                         |
+| ASUS AC1900 Router | acme-london      | 10.0.20.1    | Router and AP for London site                            |
 
 The RPis are reachable for Ansible management via dynamic DNS (`rpi1-hacme.mooo.com`, `rpi2-hacme.mooo.com`). Each Pi bridges its WAN interface (`eth0`, DHCP from ISP) to a LAN interface (`eth1`, static `192.168.50.1/24`) and runs a DHCP server for the downstream physical router.
 
@@ -67,10 +76,18 @@ brew install hashicorp/tap/hashicorp-vagrant
 **For Ansible (VM and RPi configuration):**
 
 - Python 3 with `pip`
-- Ansible (installed automatically via the `ansible/` direnv)
+- Ansible
+
+We recommend to install direnv, make sure to hook it to your shell.
 
 ```bash
 brew install python direnv
+```
+
+When you `cd ansible`, you can run `direnv allow` which will load the default `.envrc`. This will setup a new Python virtualenv automatically. Once inside this virtualenv, you can do:
+
+```
+pip install -r requirements.txt
 ```
 
 ## Getting Started
@@ -83,6 +100,7 @@ Go to the `vagrant` directory and configure the bridge interface. You can copy t
 cd vagrant
 cp .envrc.example .envrc
 # Modify .envrc with the correct bridge interface
+# Run VBoxManage list bridgedifs | grep "^Name:"
 direnv allow .
 ```
 
@@ -127,13 +145,13 @@ ansible-playbook all.yml
 acme-infrastructure/
 ├── ansible/      # Playbooks and roles for all services
 ├── vagrant/      # VM definitions and provisioning
-├── scripts/      # Utility scripts
-└── docs/         # Additional documentation
 ```
 
 ## Configuration
 
-[Where to find and how to configure host variables, vault secrets, `.envrc`, etc.]
+The only configration variable is `BRIDGE_ADAPTER` within `vagrant/.envrc`, which is the name of the network adapter you want to bridge the router VM to.
+
+All other configuration is within variables inside the `ansible` directory. All variables have sane defaults.
 
 ## References
 
@@ -141,4 +159,4 @@ acme-infrastructure/
 
 ## License
 
-[License info]
+The project is licensed under MIT, see [LICENSE](LICENSE).
