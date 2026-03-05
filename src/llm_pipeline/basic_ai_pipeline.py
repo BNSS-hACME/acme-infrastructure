@@ -363,15 +363,43 @@ def parse_args():
 
 
 def resolve_provider_settings(args):
+    """
+    Resolve API base URL and API key from arguments, environment, or config files.
+    Priority:
+    1. Command line argument --api-key (exposed in ps, use with caution)
+    2. Environment variable LLM_PIPELINE_API_KEY
+    3. File /etc/llm_pipeline/api_key
+    4. Default values (ollama) or error
+    """
     if args.provider == "ollama":
         base_url = args.base_url or "http://localhost:11434/v1"
-        api_key = args.api_key or "ollama"
+        api_key = args.api_key or os.environ.get("LLM_PIPELINE_API_KEY") or "ollama"
         return base_url, api_key
 
     base_url = args.base_url or "https://integrate.api.nvidia.com/v1"
-    api_key = args.api_key or ""
+    
+    # 1. Check argument
+    api_key = args.api_key
+    
+    # 2. Check environment variable
     if not api_key:
-        raise ValueError("An API key is required for provider 'external' (use --api-key or OPENAI_API_KEY).")
+        api_key = os.environ.get("LLM_PIPELINE_API_KEY")
+        
+    # 3. Check system config file
+    if not api_key:
+        config_path = Path("/etc/llm_pipeline/api_key")
+        if config_path.exists():
+            try:
+                api_key = config_path.read_text(encoding="utf-8").strip()
+            except (OSError, IOError) as e:
+                print(f"Warning: could not read {config_path}: {e}", file=sys.stderr)
+
+    if not api_key:
+        raise ValueError(
+            "An API key is required for provider 'external'. "
+            "Provide it via --api-key, LLM_PIPELINE_API_KEY env var, "
+            "or in /etc/llm_pipeline/api_key."
+        )
     return base_url, api_key
 
 
