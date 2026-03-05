@@ -100,11 +100,14 @@ def build_prompt(log_chunk, prompt_template):
 
 
 def extract_json_from_code_block(text):
-    """Extract JSON from markdown code blocks (```json ... ```)."""
-    # Try to match ```json ... ``` or ``` ... ```
+    """Extract JSON from markdown code blocks or raw text robustly."""
     match = re.search(r"```(?:json)?\s*\r?\n?(.*?)\r?\n?```", text, re.DOTALL)
     if match:
-        return match.group(1).strip()
+        text = match.group(1).strip()
+    
+    match2 = re.search(r"(\{.*\})", text, re.DOTALL)
+    if match2:
+        return match2.group(1).strip()
     return text
 
 
@@ -298,6 +301,45 @@ def read_last_lines(log_file, line_count):
         line.decode("utf-8", errors="replace") for line in tail_lines
     ]
     return "\n".join(text_lines).strip()
+
+
+def read_new_lines(log_file, cursor_file):
+    path = Path(log_file)
+    if not path.exists():
+        raise FileNotFoundError(f"Log file not found: {log_file}")
+
+    cursor_path = Path(cursor_file)
+    offset = 0
+    if cursor_path.exists():
+        try:
+            offset = int(cursor_path.read_text().strip())
+        except ValueError:
+            offset = 0
+
+    with path.open("rb") as handle:
+        handle.seek(0, os.SEEK_END)
+        file_size = handle.tell()
+
+        if file_size < offset:
+            # File got rotated or truncated
+            offset = 0
+
+        handle.seek(offset, os.SEEK_SET)
+        new_data = handle.read()
+        new_offset = handle.tell()
+
+    try:
+        if not cursor_path.parent.exists():
+            cursor_path.parent.mkdir(parents=True, exist_ok=True)
+        cursor_path.write_text(str(new_offset))
+    except (OSError, IOError) as e:
+        print(f"Warning: could not write cursor file: {e}", file=sys.stderr)
+
+    if not new_data:
+        return ""
+
+    text = new_data.decode("utf-8", errors="replace").strip()
+    return text
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze server logs using an OpenAI-compatible API.")
     parser.add_argument("--log-file", help="Path to a log file",
@@ -311,6 +353,7 @@ def parse_args():
     parser.add_argument("--api-key", default=None, help="API key (overrides provider default)")
     parser.add_argument("--prompt-file", default=str(DEFAULT_PROMPT_FILE), help="Path to prompt file")
     parser.add_argument("--alert-file", default=DEFAULT_ALERT_FILE, help="File for detected alerts")
+    parser.add_argument("--cursor-file", default=None, help="File to store log read state/cursor")
     parser.add_argument("--pseudonymize", action="store_true",
                         help="Anonymize IPs and hostnames before sending to the LLM")
     return parser.parse_args()
@@ -335,6 +378,8 @@ def resolve_log_chunk(args):
     if args.stdin:
         return sys.stdin.read().strip()
     if args.log_file:
+        if getattr(args, "cursor_file", None):
+            return read_new_lines(args.log_file, args.cursor_file)
         return read_last_lines(args.log_file, args.lines)
     return SAMPLE_LOGS
 
