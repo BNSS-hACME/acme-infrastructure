@@ -8,6 +8,8 @@ This project is part of a course on network security and implements a full IAM a
 
 ## Architecture
 
+![System Topology](docs/system-topology.png)
+
 ### Network Layout
 
 ```
