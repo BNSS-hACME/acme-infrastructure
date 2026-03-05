@@ -6,6 +6,10 @@
     fail_msg: "ids_mode must be either 'ids' or 'ips'."
     quiet: true
 
+- name: Normalize IDS mode value
+  ansible.builtin.set_fact:
+    ids_mode_normalized: "{{ ids_mode | lower }}"
+
 - name: Validate IDS interface list
   ansible.builtin.assert:
     that:
@@ -19,6 +23,16 @@
       - ids_home_nets | length > 0
     fail_msg: "ids_home_nets must contain at least one subnet."
     quiet: true
+
+- name: Remove EveBox APT repository before package refresh
+  ansible.builtin.deb822_repository:
+    name: evebox
+    state: absent
+
+- name: Remove legacy EveBox APT source list before package refresh
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/evebox.list
+    state: absent
 
 - name: Install suricata IDS
   ansible.builtin.apt:
@@ -66,7 +80,7 @@
     group: root
     mode: "0644"
     content: |
-      {% if ids_mode == 'ips' %}
+      {% if ids_mode_normalized == 'ips' %}
       SURICATA_OPTIONS="-q 0"
       {% else %}
       SURICATA_OPTIONS="--af-packet"
@@ -103,11 +117,15 @@
   when: ids_install_evebox | bool
 
 - name: Add EveBox APT repository
-  ansible.builtin.apt_repository:
-    repo: "deb [signed-by=/etc/apt/keyrings/evebox.asc] https://evebox.org/files/debian stable main"
-    filename: evebox
+  ansible.builtin.deb822_repository:
+    name: evebox
+    types: [deb]
+    uris: "https://evebox.org/files/debian"
+    suites: stable
+    components: [main]
+    trusted: "{{ ids_evebox_repo_trusted | bool }}"
+    signed_by: "{{ (ids_evebox_repo_trusted | bool) | ternary(omit, '/etc/apt/keyrings/evebox.asc') }}"
     state: present
-    update_cache: true
   when: ids_install_evebox | bool
 
 - name: Install EveBox
@@ -184,45 +202,100 @@
     enabled: true
   when: ids_install_evebox | bool
 
+- name: Flush handlers to ensure Suricata is running before applying iptables rules
+  ansible.builtin.meta: flush_handlers
+
 - name: Install iptables-persistent for NFQUEUE rules
   ansible.builtin.apt:
     name: iptables-persistent
     state: present
   environment:
     DEBIAN_FRONTEND: noninteractive
-  when: ids_mode == 'ips'
+  when: ids_mode_normalized == 'ips'
 
-- name: Add NFQUEUE rule for FORWARD chain (IPS inline)
-  ansible.builtin.iptables:
-    chain: FORWARD
-    jump: NFQUEUE
-    queue_num: "0"
-    action: insert
-    comment: "Suricata IPS inline inspection"
-  when: ids_mode == 'ips'
-  notify: Save iptables rules
-
-- name: Add NFQUEUE rule for INPUT chain (IPS inline)
+- name: Allow established/related before NFQUEUE
   ansible.builtin.iptables:
     chain: INPUT
-    jump: NFQUEUE
-    queue_num: "0"
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
     action: insert
-    comment: "Suricata IPS inline inspection"
-  when: ids_mode == 'ips'
+    comment: "Allow established before Suricata NFQUEUE"
+  when: ids_mode_normalized == 'ips'
   notify: Save iptables rules
 
-- name: Remove NFQUEUE rules when in IDS mode
+- name: Allow SSH before NFQUEUE (keep provisioning alive)
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "22"
+    jump: ACCEPT
+    action: insert
+    comment: "Allow SSH before Suricata NFQUEUE"
+  when: ids_mode_normalized == 'ips'
+  notify: Save iptables rules
+
+- name: Ensure Suricata NFQUEUE chain exists (IPS inline)
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    chain_management: true
+    state: present
+  when: ids_mode_normalized == 'ips'
+  notify: Save iptables rules
+
+- name: Add NFQUEUE rule in Suricata chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    jump: NFQUEUE
+    action: insert
+    comment: "Suricata IPS inline inspection"
+  when: ids_mode_normalized == 'ips'
+  notify: Save iptables rules
+
+- name: Add Suricata chain jump for FORWARD chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: FORWARD
+    jump: "{{ ids_nfqueue_chain }}"
+    action: insert
+    comment: "Suricata IPS inline inspection"
+  when: ids_mode_normalized == 'ips'
+  notify: Save iptables rules
+
+- name: Add Suricata chain jump for INPUT chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: INPUT
+    jump: "{{ ids_nfqueue_chain }}"
+    action: insert
+    comment: "Suricata IPS inline inspection"
+  when: ids_mode_normalized == 'ips'
+  notify: Save iptables rules
+
+- name: Remove Suricata chain jump rules when in IDS mode
   ansible.builtin.iptables:
     chain: "{{ item }}"
-    jump: NFQUEUE
-    queue_num: "0"
+    jump: "{{ ids_nfqueue_chain }}"
     state: absent
     comment: "Suricata IPS inline inspection"
   loop:
     - FORWARD
     - INPUT
-  when: ids_mode == 'ids'
+  when: ids_mode_normalized == 'ids'
+  notify: Save iptables rules
+
+- name: Remove NFQUEUE rule from Suricata chain when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    jump: NFQUEUE
+    state: absent
+    comment: "Suricata IPS inline inspection"
+  when: ids_mode_normalized == 'ids'
+  notify: Save iptables rules
+
+- name: Remove Suricata NFQUEUE chain when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    chain_management: true
+    state: absent
+  when: ids_mode_normalized == 'ids'
   notify: Save iptables rules
 
 # ---- Active Response ----
