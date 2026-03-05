@@ -1,0 +1,7 @@
+---
+- name: Install and configure IDS
+  hosts: router
+  become: true
+  roles:
+    - common
+    - ids

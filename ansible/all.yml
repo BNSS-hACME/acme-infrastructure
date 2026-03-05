@@ -14,6 +14,9 @@
 - name: VPN
   import_playbook: vpn.yml
 
+- name: Intrusion Detection
+  import_playbook: ids.yml
+
 - name: Network Authentication
   import_playbook: freeradius.yml
 
