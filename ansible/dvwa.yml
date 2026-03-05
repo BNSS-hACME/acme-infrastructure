@@ -4,5 +4,6 @@
   become: true
   roles:
     - common
-    - dvwa
     - hostprotection
+    - dvwa
+    - llm_pipeline

@@ -76,47 +76,56 @@ def parse_access_log(path, n_lines=0):
     return entries
 
 
-def parse_modsec_json_log(path):
+def parse_modsec_serial_log(path):
     detections = {}
     if not Path(path).exists():
         return detections
 
     with open(path, encoding="utf-8", errors="replace") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
+        content = fh.read()
+
+    # Split by boundary markers (Serial format uses -- boundaries)
+    entries = re.split(r'--[a-f0-9]{8}--Z--', content)
+    
+    for entry in entries:
+        if not entry.strip():
+            continue
+            
+        # Extract unique_id from section A
+        uid_match = re.search(r'--[a-f0-9]{8}--A--.*?\n\[.*?\]\s+(\S+)', entry, re.DOTALL)
+        if not uid_match:
+            continue
+        uid = uid_match.group(1)
+        
+        # Extract rule matches from section H
+        h_section = re.search(r'--[a-f0-9]{8}--H--(.*?)(?:--[a-f0-9]{8}--|$)', entry, re.DOTALL)
+        if not h_section:
+            continue
+            
+        h_content = h_section.group(1)
+        rules = []
+        
+        # Parse ModSecurity messages - format: Message: ... [id "XXXXX"]
+        for msg_match in re.finditer(r'Message:.*?\[id "(\d+)"\].*?(?:\[msg "([^"]+)"\])?', h_content, re.DOTALL):
+            rule_id_str = msg_match.group(1)
+            msg_text = msg_match.group(2) or ""
+            
+            if not rule_id_str.isdigit():
                 continue
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError:
+                
+            prefix = rule_id_str[:3]
+            attack_type = CRS_RULE_MAP.get(prefix)
+            if attack_type is None:
                 continue
-
-            transaction = entry.get("transaction", {})
-            uid = transaction.get("unique_id", "")
-            if not uid:
-                continue
-
-            messages = transaction.get("messages", [])
-            rules = []
-            for msg in messages:
-                details = msg.get("details", {})
-                rule_id_str = details.get("ruleId", "")
-                if not rule_id_str or not rule_id_str.isdigit():
-                    continue
-
-                prefix = rule_id_str[:3]
-                attack_type = CRS_RULE_MAP.get(prefix)
-                if attack_type is None:
-                    continue
-
-                rules.append({
-                    "rule_id": int(rule_id_str),
-                    "attack_type": attack_type,
-                    "msg": msg.get("message", ""),
-                })
-
-            if rules:
-                detections.setdefault(uid, []).extend(rules)
+                
+            rules.append({
+                "rule_id": int(rule_id_str),
+                "attack_type": attack_type,
+                "msg": msg_text,
+            })
+        
+        if rules:
+            detections.setdefault(uid, []).extend(rules)
 
     return detections
 
@@ -294,7 +303,7 @@ def parse_args():
     parser.add_argument(
         "--modsec-log",
         default="/var/log/apache2/modsec_audit.log",
-        help="Path to the ModSecurity JSON audit log",
+        help="Path to the ModSecurity Serial audit log",
     )
     parser.add_argument(
         "--llm-log",
@@ -318,7 +327,7 @@ def main():
     print(f"  - {len(access_entries)} request(s) with UNIQUE_ID")
 
     print(f"ModSecurity log: {args.modsec_log}")
-    modsec_detections = parse_modsec_json_log(args.modsec_log)
+    modsec_detections = parse_modsec_serial_log(args.modsec_log)
     print(f" - {len(modsec_detections)} request(s) with rule matches")
 
     print(f"LLM alerts log:  {args.llm_log}")

@@ -29,6 +29,17 @@
     virtualenv: /opt/llm_pipeline/venv
     virtualenv_command: python3 -m venv
 
+- name: Install cron package
+  ansible.builtin.package:
+    name: cron
+    state: present
+
+- name: Ensure cron service is running
+  ansible.builtin.service:
+    name: cron
+    state: started
+    enabled: true
+
 - name: Add cron job for LLM pipeline
   ansible.builtin.cron:
     name: "LLM pipeline"
