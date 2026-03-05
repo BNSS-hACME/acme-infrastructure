@@ -78,7 +78,7 @@ brew install hashicorp/tap/hashicorp-vagrant
 - Python 3 with `pip`
 - Ansible
 
-We recommend to install direnv, make sure to hook it to your shell.
+We recommend installing direnv and hooking it to your shell.
 
 ```bash
 brew install python direnv
