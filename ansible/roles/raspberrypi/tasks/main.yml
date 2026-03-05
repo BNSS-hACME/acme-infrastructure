@@ -17,16 +17,9 @@
     - Bring up LAN connection
 
 - name: Configure dnsmasq DHCP server on LAN interface
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: dnsmasq-lan.conf.j2
     dest: /etc/dnsmasq.d/lan.conf
-    content: |
-      # Serve DHCP only on LAN (eth1), not on WAN
-      interface={{ raspberrypi_lan_interface }}
-      bind-dynamic
-      dhcp-range={{ raspberrypi_dhcp_range_start }},{{ raspberrypi_dhcp_range_end }},{{ raspberrypi_lan_netmask }},{{ raspberrypi_dhcp_lease_time }}
-      # Always forward DNS to a fixed upstream, ignore /etc/resolv.conf
-      no-resolv
-      server={{ raspberrypi_upstream_dns }}
     mode: "0644"
   notify: Restart dnsmasq
 
