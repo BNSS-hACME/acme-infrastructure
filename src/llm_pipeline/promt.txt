@@ -11,7 +11,7 @@ Rules:
 4) Decode URL-encoded payloads mentally when relevant (e.g. %3Cscript%3E).
 5) Multiple findings are allowed and expected.
 6) If no malicious behavior is visible, return one benign finding.
-7) Do not return a unlikely attack type (e.g. "SQL Injection" with a log line that has no SQL syntax).
+7) Do not return an unlikely attack type (e.g. "SQL Injection" with a log line that has no SQL syntax).
 8) Do not answer with evidence that is not directly quoted from the logs.
 9) Do not return findings with 0 confidence if there is no evidence at all.
 
