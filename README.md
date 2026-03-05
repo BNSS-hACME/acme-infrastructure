@@ -40,7 +40,7 @@ In Stockholm, the internal VM subnet is `10.0.50.0/24`. The Raspberry Pi at each
 
 | Service               | Host               | IP                     | Description                               |
 | --------------------- | ------------------ | ---------------------- | ----------------------------------------- |
-| Router                | router.server.acme | 10.0.10.50 / 10.0.50.1 | NAT gateway, bridges physical and VM LANs |
+| Router                | router.server.acme | 10.0.10.50 / 10.0.50.1 | NAT gateway, bridges physical, IDP/IPS and VM LANs |
 | DNS                   | dns.server.acme    | 10.0.50.10             | Unbound DNS resolver                      |
 | VPN                   | vpn.server.acme    | 10.0.50.11             | OpenVPN server                            |
 | Cloud Storage         | cloud.server.acme  | 10.0.50.12             | Nextcloud with OIDC integration           |
@@ -53,8 +53,8 @@ In Stockholm, the internal VM subnet is `10.0.50.0/24`. The Raspberry Pi at each
 
 | Device             | Host             | LAN IP       | Description                                              |
 | ------------------ | ---------------- | ------------ | -------------------------------------------------------- |
-| RPi 1              | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the Stockholm physical router |
-| RPi 2              | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the London physical router    |
+| RPi 1              | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the Stockholm physical router IDP/IPS |
+| RPi 2              | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the London physical router,  IDP/IPS   |
 | ASUS AC1900 Router | acme-stockholm   | 10.0.10.1    | Router and AP for Stockholm site                         |
 | ASUS AC1900 Router | acme-london      | 10.0.20.1    | Router and AP for London site                            |
 
