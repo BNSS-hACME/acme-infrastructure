@@ -4,7 +4,7 @@ Infrastructure-as-code for an academic network security lab. Provisions a set of
 
 ## Overview
 
-This project is part of a course on network security and implements a full IAM and PKI stack using open-source tools: [Step CA](https://smallstep.com/docs/step-ca/) for certificate management, [Keycloak](https://www.keycloak.org/) for OIDC identity, [Suricata](https://suricata.io) for IDS and IPS, and [FreeRADIUS](https://freeradius.org/) for network authentication. Supporting services include OpenVPN, Nextcloud, an Apache HTTPS front-end, and an AI service — all running as VMs provisioned by Vagrant and configured by Ansible. Two Raspberry Pis provide physical WAN/LAN routing at each deployment site. Additionally, [DVWA](https://github.com/digininja/DVWA) is deployed as a vulnerable web application for comparing the performance between [ModSecurity](https://github.com/ModSecurity/ModSecurity) and LLM based IDS.
+This project is part of a course on network security and implements a full IAM and PKI stack using open-source tools: [Step CA](https://smallstep.com/docs/step-ca/) for certificate management, [Keycloak](https://www.keycloak.org/) for OIDC identity, and [FreeRADIUS](https://freeradius.org/) for network authentication. Supporting services include OpenVPN, Nextcloud, an Apache HTTPS front-end, and an AI service — all running as VMs provisioned by Vagrant and configured by Ansible. Two Raspberry Pis provide physical WAN/LAN routing at each deployment site. Additionally, [DVWA](https://github.com/digininja/DVWA) is deployed as a vulnerable web application for comparing the performance between [ModSecurity](https://github.com/ModSecurity/ModSecurity) and LLM-based IDS.
 
 ## Architecture
 
