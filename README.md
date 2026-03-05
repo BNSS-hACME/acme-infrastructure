@@ -25,7 +25,7 @@ Internet / ISP
   dns  vpn  auth  cloud  ai  secure  dvwa
 ```
 
-There are two sites, Stockhlom and London. Each site has two subnets, internal and guest.
+There are two sites, Stockholm and London. Each site has two subnets, internal and guest.
 
 - Internal Stockholm `10.0.10.0/24`
 - Internal London `10.0.20.0/24`
