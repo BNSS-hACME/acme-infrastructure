@@ -26,17 +26,25 @@ COMMIT
 {% endif %}
 
 {% if (firewall | default({}))['ports'] is defined %}
-{% for port in firewall.ports %}
-{% if (firewall | default({}))['allowed_subnets'] is defined %}
-{% for subnet in firewall.allowed_subnets %}
+  {% for port in firewall.ports %}
+    {% if (firewall | default({}))['allowed_subnets'] is defined %}
+      {% for subnet in firewall.allowed_subnets %}
 -A INPUT -p tcp --dport {{ port }} -s {{ subnet }} -m comment --comment "Allow TCP {{ port }} from {{ subnet }}" -j ACCEPT
 -A INPUT -p udp --dport {{ port }} -s {{ subnet }} -m comment --comment "Allow UDP {{ port }} from {{ subnet }}" -j ACCEPT
-{% endfor %}
-{% else %}
+      {% endfor %}
+    {% else %}
 -A INPUT -p tcp --dport {{ port }} -m comment --comment "Allow TCP {{ port }} globally" -j ACCEPT
 -A INPUT -p udp --dport {{ port }} -m comment --comment "Allow UDP {{ port }} globally" -j ACCEPT
-{% endif %}
-{% endfor %}
+    {% endif %}
+  {% endfor %}
+{% else %}
+  {% if (firewall | default({}))['allowed_subnets'] is defined %}
+    {% for subnet in firewall.allowed_subnets %}
+-A INPUT -s {{ subnet }} -m comment --comment "Allow ALL from {{ subnet }}" -j ACCEPT
+    {% endfor %}
+  {% else %}
+-A INPUT -m comment --comment "Allow ALL globally (Insecure Fallback)" -j ACCEPT
+  {% endif %}
 {% endif %}
 
 COMMIT
