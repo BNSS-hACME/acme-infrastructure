@@ -28,13 +28,10 @@ _IP_PATTERN = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _HOSTNAME_PATTERN = re.compile(
     r"\b[\w.-]+\.(?:acme|local|internal|corp|intranet)\b", re.IGNORECASE
 )
+_UNIQUE_ID_PATTERN = re.compile(r'"([A-Za-z0-9@_-]{20,})"\s*$')
 
 
 def pseudonymize_logs(log_text):
-    """Replace real IPs and internal hostnames with deterministic fakes.
-
-    Returns (sanitized_text, reverse_map) so callers can de-pseudonymize.
-    """
     ip_map = {}
     counter = [1]
 
@@ -53,7 +50,6 @@ def pseudonymize_logs(log_text):
 
 
 def depseudonymize_findings(findings, reverse_map):
-    """Restore original IPs in evidence and explanation fields."""
     if not reverse_map:
         return findings
 
@@ -215,6 +211,40 @@ def validate_result(payload):
     return {"findings": findings}
 
 
+def extract_unique_ids(log_text):
+    uid_map = {}
+    for line in log_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        match = _UNIQUE_ID_PATTERN.search(line)
+        if match:
+            uid = match.group(1)
+            line_without_uid = line[:match.start()].rstrip()
+            uid_map[line_without_uid] = uid
+            uid_map[line] = uid
+    return uid_map
+
+
+def attach_unique_ids(findings, uid_map):
+    if not uid_map:
+        return findings
+
+    for finding in findings:
+        evidence_list = finding.get("evidence", [])
+        matched_uids = set()
+        for evidence_fragment in evidence_list:
+            fragment = evidence_fragment.strip()
+            if not fragment:
+                continue
+            for log_key, uid in uid_map.items():
+                if fragment in log_key or log_key in fragment:
+                    matched_uids.add(uid)
+        if matched_uids:
+            finding["unique_ids"] = sorted(matched_uids)
+    return findings
+
+
 def read_last_lines(log_file, line_count):
     path = Path(log_file)
     if not path.exists():
@@ -223,7 +253,6 @@ def read_last_lines(log_file, line_count):
     if line_count <= 0:
         return ""
 
-    # Tail-style reader: seek from end and read blocks until we have enough lines.
     block_size = 8192
     newline_byte = b"\n"
     chunks = []
@@ -235,7 +264,6 @@ def read_last_lines(log_file, line_count):
 
         while file_size > 0 and lines_found <= line_count:
             read_size = min(block_size, file_size)
-            # Move the cursor back by read_size bytes and read that block.
             handle.seek(file_size - read_size, os.SEEK_SET)
             chunk = handle.read(read_size)
             chunks.append(chunk)
@@ -247,9 +275,7 @@ def read_last_lines(log_file, line_count):
     if not chunks:
         return ""
 
-    # Reconstruct the tail portion in the correct order.
     data = b"".join(reversed(chunks))
-    # Split into lines and select the last N lines.
     byte_lines = data.splitlines()
     if not byte_lines:
         return ""
@@ -344,6 +370,10 @@ def main():
 
     print("\n--- LLM Analysis Result ---")
     print(json.dumps(validated, indent=2, ensure_ascii=False))
+
+    if not args.sample and not args.stdin and args.log_file:
+        uid_map = extract_unique_ids(log_chunk)
+        validated["findings"] = attach_unique_ids(validated["findings"], uid_map)
 
     malicious_findings = [item for item in validated.get("findings", []) if item.get("malicious")]
     if malicious_findings:

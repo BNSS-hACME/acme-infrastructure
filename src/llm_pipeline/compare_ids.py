@@ -1,30 +1,12 @@
 #!/usr/bin/env python3
-"""Compare ModSecurity (rule-based) alerts with LLM pipeline alerts.
 
-Reads a ModSecurity audit log and an LLM alert log, maps both to a common
-schema, and prints a side-by-side comparison table.  Optionally computes
-Precision / Recall / F1 when a ground-truth file is supplied.
-
-Usage examples:
-    # Side-by-side comparison from real logs
-    python3 compare_ids.py \
-        --modsec-log /var/log/modsec_audit.log \
-        --llm-log ~/.llm_pipeline/llm_alerts.log
-
-    # With ground-truth labels for metrics
-    python3 compare_ids.py \
-        --modsec-log /var/log/modsec_audit.log \
-        --llm-log ~/.llm_pipeline/llm_alerts.log \
-        --ground-truth ground_truth.json
-"""
 import argparse
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
 
-# ─── OWASP CRS Rule-ID → Attack-Type Mapping ────────────────────────────────
-# ModSecurity OWASP CRS organises rules by ID prefix.
 CRS_RULE_MAP = {
     "910": "Automated vulnerability scanning",
     "913": "Automated vulnerability scanning",
@@ -38,227 +20,292 @@ CRS_RULE_MAP = {
     "942": "SQL Injection",
     "943": "Brute-force authentication",
     "944": "Command injection",
-    "949": None,              # anomaly score – skip
-    "950": None,              # outbound – skip
-    "951": None,              # outbound – skip
-    "959": None,              # anomaly score – skip
-    "980": None,              # correlation – skip
+    "949": None,   
+    "950": None,   
+    "951": None,  
+    "959": None,   
+    "980": None,   
 }
 
-ATTACK_TYPES = [
-    "SQL Injection",
-    "Cross-Site Scripting (XSS)",
-    "Brute-force authentication",
-    "Directory or endpoint enumeration",
-    "Command injection",
-    "Automated vulnerability scanning",
-]
+_UID_RE = re.compile(r'"([A-Za-z0-9@_-]{20,})"\s*$')
 
-def parse_modsec_audit_log(path):
-    """Parse a ModSecurity JSON audit log into a list of alert dicts.
+_REQUEST_RE = re.compile(r'"(\w+ \S+ HTTP/\S+)"')
 
-    Expects one JSON object per line, where each object represents a complete
-    audit entry with transaction details and matched rules in the 'messages' array.
-    
-    To configure ModSecurity for JSON output:
-        SecAuditLogFormat JSON
-    """
-    alerts = []
+
+
+def parse_access_log(path, n_lines=0):
+    entries = {}
     if not Path(path).exists():
-        return alerts
+        return entries
 
     with open(path, encoding="utf-8", errors="replace") as fh:
-        for lineno, line in enumerate(fh, 1):
+        lines = fh.readlines()
+
+    if n_lines > 0:
+        lines = lines[-n_lines:]
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        uid_match = _UID_RE.search(line)
+        if not uid_match:
+            continue
+
+        uid = uid_match.group(1)
+        ip = line.split()[0] if line.split() else ""
+
+        req_match = _REQUEST_RE.search(line)
+        request = req_match.group(1) if req_match else ""
+
+        parts = line.split('"')
+        status = ""
+        if len(parts) >= 3:
+            after_request = parts[2].strip().split()
+            if after_request:
+                status = after_request[0]
+
+        entries[uid] = {
+            "ip": ip,
+            "request": request,
+            "status": status,
+            "line": line,
+        }
+
+    return entries
+
+
+def parse_modsec_json_log(path):
+    detections = {}
+    if not Path(path).exists():
+        return detections
+
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
             line = line.strip()
             if not line:
                 continue
-            
             try:
                 entry = json.loads(line)
-            except json.JSONDecodeError as e:
-                print(f"Warning: skipping malformed JSON on line {lineno}: {e}", file=sys.stderr)
+            except json.JSONDecodeError:
                 continue
-            
-            # Extract transaction details
+
             transaction = entry.get("transaction", {})
-            request = transaction.get("request", {})
-            uri = request.get("uri", "")
-            
-            # Process each matched rule in the messages array
-            messages = transaction.get("messages", [])
-            if not messages:
+            uid = transaction.get("unique_id", "")
+            if not uid:
                 continue
-                
+
+            messages = transaction.get("messages", [])
+            rules = []
             for msg in messages:
                 details = msg.get("details", {})
                 rule_id_str = details.get("ruleId", "")
-                
                 if not rule_id_str or not rule_id_str.isdigit():
                     continue
-                
-                rule_id = int(rule_id_str)
+
                 prefix = rule_id_str[:3]
                 attack_type = CRS_RULE_MAP.get(prefix)
-                
-                # Skip rules we don't track (anomaly scores, etc.)
                 if attack_type is None:
                     continue
-                
-                # Map numeric severity to descriptive labels
-                severity_map = {
-                    "0": "EMERGENCY",
-                    "1": "ALERT", 
-                    "2": "CRITICAL",
-                    "3": "ERROR",
-                    "4": "WARNING",
-                    "5": "NOTICE",
-                }
-                severity_num = details.get("severity", "")
-                severity = severity_map.get(str(severity_num), severity_num or "UNKNOWN")
-                
-                alerts.append({
-                    "source": "ModSecurity",
-                    "malicious": True,
+
+                rules.append({
+                    "rule_id": int(rule_id_str),
                     "attack_type": attack_type,
-                    "rule_id": rule_id,
-                    "message": msg.get("message", ""),
-                    "severity": severity,
-                    "uri": uri,
-                    "confidence": 1.0,
+                    "msg": msg.get("message", ""),
                 })
-    
-    return alerts
+
+            if rules:
+                detections.setdefault(uid, []).extend(rules)
+
+    return detections
 
 
-def parse_llm_alert_log(path):
-    """Parse the LLM pipeline alert log (one JSON object per line)."""
-    alerts = []
+def parse_llm_alerts(path):
+    detections = {}
+    unmatched = []
+
     if not Path(path).exists():
-        return alerts
+        return detections, unmatched
 
     with open(path, encoding="utf-8", errors="replace") as fh:
-        for lineno, line in enumerate(fh, 1):
+        for line in fh:
             line = line.strip()
             if not line:
                 continue
             try:
-                entry = json.loads(line)
-                entry["source"] = "LLM"
-                entry.setdefault("malicious", True)
-                alerts.append(entry)
+                finding = json.loads(line)
             except json.JSONDecodeError:
-                print(f"Warning: skipping malformed JSON on line {lineno}", file=sys.stderr)
-    return alerts
+                continue
+
+            uids = finding.get("unique_ids", [])
+            if not uids:
+                unmatched.append(finding)
+                continue
+
+            for uid in uids:
+                detections.setdefault(uid, []).append(finding)
+
+    return detections, unmatched
 
 
-def summarise_alerts(alerts, label):
-    """Produce a per-attack-type summary."""
-    counts = Counter()
-    for a in alerts:
-        at = a.get("attack_type", "Unknown")
-        if at and a.get("malicious"):
-            counts[at] += 1
-    return counts
+
+def build_comparison(access_entries, modsec_detections, llm_detections):
+    rows = []
+    for uid, info in access_entries.items():
+        modsec_rules = modsec_detections.get(uid, [])
+        llm_findings = llm_detections.get(uid, [])
+
+        modsec_types = set()
+        modsec_rule_ids = []
+        for r in modsec_rules:
+            modsec_types.add(r["attack_type"])
+            modsec_rule_ids.append(str(r["rule_id"]))
+
+        llm_types = set()
+        llm_confidence = 0.0
+        for f in llm_findings:
+            at = f.get("attack_type")
+            if at and f.get("malicious"):
+                llm_types.add(at)
+                llm_confidence = max(llm_confidence, f.get("confidence", 0.0))
+
+        modsec_detected = len(modsec_types) > 0
+        llm_detected = len(llm_types) > 0
+
+        if modsec_detected and llm_detected:
+            overlap = modsec_types & llm_types
+            if overlap:
+                agree = "+ Both"
+            else:
+                agree = "~ Differ"
+        elif not modsec_detected and not llm_detected:
+            agree = "+ Benign"
+        elif modsec_detected:
+            agree = "- ModSec only"
+        else:
+            agree = "- LLM only"
+
+        rows.append({
+            "uid": uid,
+            "request": info["request"],
+            "ip": info["ip"],
+            "status": info["status"],
+            "modsec_rules": ", ".join(modsec_rule_ids) if modsec_rule_ids else "—",
+            "modsec_types": ", ".join(sorted(modsec_types)) if modsec_types else "—",
+            "llm_types": ", ".join(sorted(llm_types)) if llm_types else "—",
+            "llm_confidence": f"{llm_confidence:.2f}" if llm_detected else "—",
+            "agree": agree,
+        })
+
+    return rows
 
 
-def print_comparison(modsec_alerts, llm_alerts):
-    """Print a side-by-side comparison table."""
+def print_per_request_table(rows):
+    if not rows:
+        print("\nNo access log entries to compare.")
+        return
 
-    modsec_counts = summarise_alerts(modsec_alerts, "ModSecurity")
-    llm_counts = summarise_alerts(llm_alerts, "LLM")
+    max_req = 45
 
-    all_types = sorted(set(list(modsec_counts.keys()) + list(llm_counts.keys()) + ATTACK_TYPES))
+    header = (
+        f"{'#':<4} {'Request':<{max_req}} "
+        f"{'ModSecurity':<25} {'LLM':<25} {'Conf':>5} {'Agreement':<15}"
+    )
 
-    header = f"{'Attack Type':<40} {'ModSecurity':>12} {'LLM':>12} {'Match':>8}"
     print("\n" + "=" * len(header))
-    print("  COMPARISON: ModSecurity (Rule-Based) vs LLM Pipeline")
+    print("  PER-REQUEST COMPARISON (correlated by UNIQUE_ID)")
     print("=" * len(header))
     print(header)
     print("-" * len(header))
 
-    for at in all_types:
-        mc = modsec_counts.get(at, 0)
-        lc = llm_counts.get(at, 0)
-        match = "✓" if mc > 0 and lc > 0 else ("—" if mc == 0 and lc == 0 else "✗")
-        print(f"{at:<40} {mc:>12} {lc:>12} {match:>8}")
+    for i, row in enumerate(rows, 1):
+        req = row["request"]
+        if len(req) > max_req:
+            req = req[:max_req - 3] + "..."
+
+        modsec_col = row["modsec_types"]
+        if modsec_col != "—" and len(modsec_col) > 23:
+            modsec_col = modsec_col[:20] + "..."
+
+        llm_col = row["llm_types"]
+        if llm_col != "—" and len(llm_col) > 23:
+            llm_col = llm_col[:20] + "..."
+
+        print(
+            f"{i:<4} {req:<{max_req}} "
+            f"{modsec_col:<25} {llm_col:<25} "
+            f"{row['llm_confidence']:>5} {row['agree']:<15}"
+        )
 
     print("-" * len(header))
-    total_m = sum(modsec_counts.values())
-    total_l = sum(llm_counts.values())
-    print(f"{'TOTAL':<40} {total_m:>12} {total_l:>12}")
-    print("=" * len(header))
 
 
-def compute_metrics(alerts, ground_truth):
-    """Compute per-type Precision, Recall, and F1 against ground truth.
+def print_summary(rows):
+    both = sum(1 for r in rows if r["agree"].startswith("# Both"))
+    benign = sum(1 for r in rows if r["agree"] == "+ Benign")
+    differ = sum(1 for r in rows if r["agree"].startswith("~"))
+    modsec_only = sum(1 for r in rows if r["agree"] == "- ModSec only")
+    llm_only = sum(1 for r in rows if r["agree"] == "- LLM only")
+    total = len(rows)
 
-    ground_truth: list of dicts with at least {"attack_type": str, "malicious": bool}
-    alerts: list of dicts from either engine
-    """
-    gt_types = Counter()
-    for gt in ground_truth:
-        if not gt.get("malicious"):
-            continue
-        at = gt.get("attack_type")
-        if not at:
-            # Skip malformed ground-truth entries without a usable attack type
-            continue
-        gt_types[at] += 1
+    print(f"\n{'─' * 50}")
+    print("  SUMMARY")
+    print(f"{'─' * 50}")
+    print(f"  Total requests analysed:  {total}")
+    print(f"  + Both detected:          {both}")
+    print(f"  + Both benign:            {benign}")
+    print(f"  ~ Different attack type:  {differ}")
+    print(f"  - ModSecurity only:       {modsec_only}")
+    print(f"  - LLM only:              {llm_only}")
+    print(f"{'─' * 50}")
 
-    pred_types = Counter()
-    for a in alerts:
-        if a.get("malicious"):
-            pred_types[a.get("attack_type", "Unknown")] += 1
+    modsec_counts = Counter()
+    llm_counts = Counter()
+    for r in rows:
+        for t in r["modsec_types"].split(", "):
+            if t != "—":
+                modsec_counts[t] += 1
+        for t in r["llm_types"].split(", "):
+            if t != "—":
+                llm_counts[t] += 1
 
-    all_types = sorted(set(list(gt_types.keys()) + list(pred_types.keys())))
+    all_types = sorted(set(list(modsec_counts.keys()) + list(llm_counts.keys())))
+    if all_types:
+        type_header = f"\n  {'Attack Type':<40} {'ModSec':>8} {'LLM':>8}"
+        print(type_header)
+        print(f"  {'-' * 56}")
+        for at in all_types:
+            mc = modsec_counts.get(at, 0)
+            lc = llm_counts.get(at, 0)
+            print(f"  {at:<40} {mc:>8} {lc:>8}")
+        print(f"  {'-' * 56}")
 
-    results = {}
-    for at in all_types:
-        tp = min(gt_types.get(at, 0), pred_types.get(at, 0))
-        fp = max(0, pred_types.get(at, 0) - gt_types.get(at, 0))
-        fn = max(0, gt_types.get(at, 0) - pred_types.get(at, 0))
-
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
-
-        results[at] = {"precision": precision, "recall": recall, "f1": f1, "tp": tp, "fp": fp, "fn": fn}
-
-    return results
-
-
-def print_metrics(metrics, engine_name):
-    """Print a metrics table."""
-    header = f"{'Attack Type':<40} {'Prec':>8} {'Recall':>8} {'F1':>8} {'TP':>6} {'FP':>6} {'FN':>6}"
-    print(f"\n--- Metrics: {engine_name} ---")
-    print(header)
-    print("-" * len(header))
-    for at in sorted(metrics.keys()):
-        m = metrics[at]
-        print(f"{at:<40} {m['precision']:>8.2f} {m['recall']:>8.2f} {m['f1']:>8.2f} {m['tp']:>6} {m['fp']:>6} {m['fn']:>6}")
-    print("-" * len(header))
-
-
-# ─── CLI ─────────────────────────────────────────────────────────────────────
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Compare ModSecurity and LLM pipeline alerts."
+        description="Compare ModSecurity and LLM pipeline alerts per request (via UNIQUE_ID)."
+    )
+    parser.add_argument(
+        "--access-log",
+        default="/var/log/apache2/dvwa_access.log",
+        help="Path to the Apache access log (combined_uid format)",
     )
     parser.add_argument(
         "--modsec-log",
         default="/var/log/apache2/modsec_audit.log",
-        help="Path to the ModSecurity serial audit log",
+        help="Path to the ModSecurity JSON audit log",
     )
     parser.add_argument(
         "--llm-log",
-        default=str(Path.home() / ".llm_pipeline" / "llm_alerts.log"),
+        default="/var/log/llm_alerts.log",
         help="Path to the LLM pipeline alert log",
     )
     parser.add_argument(
-        "--ground-truth",
-        default=None,
-        help="Optional JSON file with ground-truth labels for metrics",
+        "--lines",
+        type=int,
+        default=50,
+        help="Number of last access log lines to compare (0 = all)",
     )
     return parser.parse_args()
 
@@ -266,33 +313,23 @@ def parse_args():
 def main():
     args = parse_args()
 
-    print(f"Reading ModSecurity log: {args.modsec_log}")
-    modsec_alerts = parse_modsec_audit_log(args.modsec_log)
-    print(f"  → {len(modsec_alerts)} alert(s) parsed")
+    print(f"Access log:      {args.access_log}")
+    access_entries = parse_access_log(args.access_log, args.lines)
+    print(f"  - {len(access_entries)} request(s) with UNIQUE_ID")
 
-    print(f"Reading LLM alert log:   {args.llm_log}")
-    llm_alerts = parse_llm_alert_log(args.llm_log)
-    print(f"  → {len(llm_alerts)} alert(s) parsed")
+    print(f"ModSecurity log: {args.modsec_log}")
+    modsec_detections = parse_modsec_json_log(args.modsec_log)
+    print(f" - {len(modsec_detections)} request(s) with rule matches")
 
-    print_comparison(modsec_alerts, llm_alerts)
+    print(f"LLM alerts log:  {args.llm_log}")
+    llm_detections, unmatched = parse_llm_alerts(args.llm_log)
+    print(f" - {len(llm_detections)} request(s) with findings")
+    if unmatched:
+        print(f" - {len(unmatched)} finding(s) without unique_id (not correlated)")
 
-    if args.ground_truth:
-        gt_path = Path(args.ground_truth)
-        if not gt_path.exists():
-            print(f"Error: ground-truth file not found: {gt_path}", file=sys.stderr)
-            return 1
-
-        with open(gt_path, encoding="utf-8") as fh:
-            ground_truth = json.load(fh)
-
-        if not isinstance(ground_truth, list):
-            ground_truth = ground_truth.get("findings", [])
-
-        modsec_metrics = compute_metrics(modsec_alerts, ground_truth)
-        llm_metrics = compute_metrics(llm_alerts, ground_truth)
-
-        print_metrics(modsec_metrics, "ModSecurity")
-        print_metrics(llm_metrics, "LLM Pipeline")
+    rows = build_comparison(access_entries, modsec_detections, llm_detections)
+    print_per_request_table(rows)
+    print_summary(rows)
 
     return 0
 
