@@ -228,7 +228,8 @@ def validate_result(payload):
 
 
 def extract_unique_ids(log_text):
-    uid_map = {}
+    """Extract UIDs from log lines and return a list of (line_without_uid, uid) tuples."""
+    uid_list = []
     for line in log_text.splitlines():
         line = line.strip()
         if not line:
@@ -237,25 +238,33 @@ def extract_unique_ids(log_text):
         if match:
             uid = match.group(1)
             line_without_uid = line[:match.start()].rstrip()
-            uid_map[line_without_uid] = uid
-            uid_map[line] = uid
-    return uid_map
+            uid_list.append((line_without_uid, uid))
+    return uid_list
 
 
-def attach_unique_ids(findings, uid_map):
-    if not uid_map:
+def attach_unique_ids(findings, uid_list):
+    if not uid_list:
         return findings
 
     for finding in findings:
         evidence_list = finding.get("evidence", [])
         matched_uids = set()
+        
         for evidence_fragment in evidence_list:
             fragment = evidence_fragment.strip()
             if not fragment:
                 continue
-            for log_key, uid in uid_map.items():
-                if fragment in log_key or log_key in fragment:
+            
+            direct_match = _UNIQUE_ID_PATTERN.search(fragment)
+            if direct_match:
+                matched_uids.add(direct_match.group(1))
+                continue
+            
+            for log_line, uid in uid_list:
+                if fragment in log_line or log_line in fragment:
                     matched_uids.add(uid)
+                    break  
+        
         if matched_uids:
             finding["unique_ids"] = sorted(matched_uids)
     return findings
@@ -267,7 +276,6 @@ def read_last_lines(log_file, line_count):
         raise FileNotFoundError(f"Log file not found: {log_file}")
 
     if line_count == 0:
-        # Read the entire file when line_count is 0 (common "all lines" convention).
         return path.read_text(encoding="utf-8", errors="replace").strip()
     if line_count < 0:
         return ""
@@ -324,7 +332,6 @@ def read_new_lines(log_file, cursor_file):
         file_size = handle.tell()
 
         if file_size < offset:
-            # File got rotated or truncated
             offset = 0
 
         handle.seek(offset, os.SEEK_SET)
@@ -363,14 +370,6 @@ def parse_args():
 
 
 def resolve_provider_settings(args):
-    """
-    Resolve API base URL and API key from arguments, environment, or config files.
-    Priority:
-    1. Command line argument --api-key (exposed in ps, use with caution)
-    2. Environment variable LLM_PIPELINE_API_KEY
-    3. File /etc/llm_pipeline/api_key
-    4. Default values (ollama) or error
-    """
     if args.provider == "ollama":
         base_url = args.base_url or "http://localhost:11434/v1"
         api_key = args.api_key or os.environ.get("LLM_PIPELINE_API_KEY") or "ollama"
@@ -378,14 +377,11 @@ def resolve_provider_settings(args):
 
     base_url = args.base_url or "https://integrate.api.nvidia.com/v1"
     
-    # 1. Check argument
     api_key = args.api_key
     
-    # 2. Check environment variable
     if not api_key:
         api_key = os.environ.get("LLM_PIPELINE_API_KEY")
         
-    # 3. Check system config file
     if not api_key:
         config_path = Path("/etc/llm_pipeline/api_key")
         if config_path.exists():
@@ -461,8 +457,8 @@ def main():
     print(json.dumps(validated, indent=2, ensure_ascii=False))
 
     if not args.sample and not args.stdin and args.log_file:
-        uid_map = extract_unique_ids(log_chunk)
-        validated["findings"] = attach_unique_ids(validated["findings"], uid_map)
+        uid_list = extract_unique_ids(log_chunk)
+        validated["findings"] = attach_unique_ids(validated["findings"], uid_list)
 
     malicious_findings = [item for item in validated.get("findings", []) if item.get("malicious")]
     if malicious_findings:
