@@ -123,6 +123,7 @@ Make sure you have a virtual environment set up:
 ```bash
 cd ../ansible
 direnv allow . # This will create a new .venv
+pip install -r requirements.txt
 ```
 
 ### 3. Run Playbooks
@@ -138,6 +139,16 @@ Or run the full stack with the master playbook:
 ```bash
 ansible-playbook all.yml
 ```
+
+### 4. Configure Raspberry Pis
+
+To manage the Raspberry Pis, first decrypt the SSH key:
+
+```bash
+make
+```
+
+This decrypts the vault-encrypted SSH key to `/tmp/acme_rpi_id_ed25519`.
 
 ## Project Structure
 
@@ -155,7 +166,12 @@ All other configuration is within variables inside the `ansible` directory. All 
 
 ## References
 
-[Links to related work, papers, and tools — e.g., NSS-VPKI, Step CA, Keycloak]
+- [Unbound](https://nlnetlabs.nl/projects/unbound/) — DNS resolver
+- [OpenVPN](https://openvpn.net/) — VPN server
+- [Nextcloud](https://nextcloud.com/) — Cloud storage
+- [Ollama](https://ollama.com/) — Local AI service
+- [DVWA](https://github.com/digininja/DVWA) — Damn Vulnerable Web Application
+- [Ansible](https://docs.ansible.com/) — Configuration management
 
 ## License
 
