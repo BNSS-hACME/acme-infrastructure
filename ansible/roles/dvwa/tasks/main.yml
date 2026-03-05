@@ -147,8 +147,3 @@
     name: apache2
     state: restarted
     enabled: true
-  when: >
-    dvwa_enable_rewrite_module.changed
-    or dvwa_site_conf.changed
-    or dvwa_disable_default_site.changed
-    or dvwa_enable_dvwa_site.changed

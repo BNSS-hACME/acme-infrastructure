@@ -251,7 +251,7 @@ def print_per_request_table(rows):
 
 
 def print_summary(rows):
-    both = sum(1 for r in rows if r["agree"].startswith("# Both"))
+    both = sum(1 for r in rows if r["agree"].startswith("+ Both"))
     benign = sum(1 for r in rows if r["agree"] == "+ Benign")
     differ = sum(1 for r in rows if r["agree"].startswith("~"))
     modsec_only = sum(1 for r in rows if r["agree"] == "- ModSec only")
@@ -334,7 +334,7 @@ def main():
     llm_detections, unmatched = parse_llm_alerts(args.llm_log)
     print(f" - {len(llm_detections)} request(s) with findings")
     if unmatched:
-        print(f" - {len(unmatched)} finding(s) without unique_id (not correlated)")
+        print(f" - {len(unmatched)} finding(s) without unique_ids (not correlated)")
 
     rows = build_comparison(access_entries, modsec_detections, llm_detections)
     print_per_request_table(rows)
