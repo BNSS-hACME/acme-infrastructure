@@ -32,7 +32,7 @@ There are two sites, Stockholm and London. Each site has two subnets, internal a
 - Guest Stockholm `10.0.15.0/24`
 - Guest London `10.0.25.0/24`
 
-On the Stockholm site internal VM subnet (`10.0.50.0/24`). The Raspberry Pi at each site acts as a WAN/LAN pass-through router with NAT, placing the physical router (and in turn all VMs in Stockholm) behind it.
+In Stockholm, the internal VM subnet is `10.0.50.0/24`. The Raspberry Pi at each site acts as a WAN/LAN pass-through router with NAT, placing the physical router (and in turn all VMs in Stockholm) behind it.
 
 ### Virtual Machines
 
