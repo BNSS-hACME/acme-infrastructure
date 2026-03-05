@@ -40,6 +40,22 @@
     state: started
     enabled: true
 
+- name: Create configuration directory for LLM pipeline
+  ansible.builtin.file:
+    path: /etc/llm_pipeline
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Deploy API key for LLM pipeline
+  ansible.builtin.copy:
+    content: "{{ llm_pipeline_nice }}"
+    dest: /etc/llm_pipeline/api_key
+    mode: "0600"
+    owner: root
+    group: root
+
 - name: Add cron job for LLM pipeline
   ansible.builtin.cron:
     name: "LLM pipeline"
@@ -52,6 +68,5 @@
       --base-url {{ llm_pipeline_api_base_url }}
       --alert-file {{ llm_pipeline_alert_file }}
       --prompt-file {{ llm_pipeline_prompt_file }}
-      --api-key {{ llm_pipeline_nice }}
     user: "{{ llm_pipeline_cron_user }}"
     state: present
