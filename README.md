@@ -149,7 +149,7 @@ acme-infrastructure/
 
 ## Configuration
 
-The only configration variable is `BRIDGE_ADAPTER` within `vagrant/.envrc`, which is the name of the network adapter you want to bridge the router VM to.
+The only configuration variable is `BRIDGE_ADAPTER` within `vagrant/.envrc`, which is the name of the network adapter you want to bridge the router VM to.
 
 All other configuration is within variables inside the `ansible` directory. All variables have sane defaults.
 
