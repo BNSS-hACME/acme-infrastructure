@@ -6,10 +6,12 @@
 
     <Directory /var/www/html/dvwa>
         AllowOverride None
-        Require local
+        Require all granted
     </Directory>
 
+    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" \"%{UNIQUE_ID}e\"" combined_uid
+
     LogLevel {{ dvwa_apache_log_level | default('info') }}
-    CustomLog /var/log/apache2/dvwa_access.log combined
+    CustomLog /var/log/apache2/dvwa_access.log combined_uid
     ErrorLog /var/log/apache2/dvwa_error.log
 </VirtualHost>

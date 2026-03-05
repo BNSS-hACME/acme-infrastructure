@@ -1,5 +1,9 @@
 <?php
 
+mysqli_report(MYSQLI_REPORT_OFF);
+
+$DBMS = 'MySQL';
+
 $_DVWA = array();
 $_DVWA[ 'db_server' ]   = '127.0.0.1';
 $_DVWA[ 'db_database' ] = '{{ dvwa_db_database }}';
@@ -11,7 +15,12 @@ $_DVWA[ 'recaptcha_public_key' ]  = '';
 $_DVWA[ 'recaptcha_private_key' ] = '';
 
 $_DVWA[ 'default_security_level' ] = 'low';
-$_DVWA[ 'default_phpids_level' ] = '1';
-$_DVWA[ 'default_phpids_status' ] = 'disabled';
+$_DVWA[ 'default_locale' ] = 'en';
+$_DVWA[ 'disable_authentication' ] = false;
+
+define ('MYSQL', 'mysql');
+define ('SQLITE', 'sqlite');
+
+$_DVWA['SQLI_DB'] = MYSQL;
 
 ?>
