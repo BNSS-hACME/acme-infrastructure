@@ -1,0 +1,11 @@
+# Serve DHCP only on LAN (eth1), not on WAN
+interface={{ raspberrypi_lan_interface }}
+bind-dynamic
+dhcp-range={{ raspberrypi_dhcp_range_start }},{{ raspberrypi_dhcp_range_end }},{{ raspberrypi_lan_netmask }},{{ raspberrypi_dhcp_lease_time }}
+# Always forward DNS to a fixed upstream, ignore /etc/resolv.conf
+no-resolv
+server={{ raspberrypi_upstream_dns }}
+{% for host in raspberrypi_static_dhcp_hosts %}
+dhcp-host={{ host.mac }},{{ host.ip }}{% if host.name is defined %},{{ host.name }}{% endif %}
+
+{% endfor %}
