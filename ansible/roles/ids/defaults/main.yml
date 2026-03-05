@@ -47,8 +47,8 @@ ids_app_layer_protocols:
   tls: {}
   dns: {}
   ssh: {}
-  dhcp: {}
-  quic: {}
+  udp: {}
+  tcp: {}
   dnp3:
     detection-enabled: true
   modbus:
