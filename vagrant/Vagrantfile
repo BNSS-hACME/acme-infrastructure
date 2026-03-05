@@ -158,6 +158,7 @@ Vagrant.configure("2") do |config|
         netmask: "255.255.255.0",
         virtualbox__intnet: "acme-internal"
 
+
       # Replace Vagrant NAT default route with router.server.acme.
       # 10.0.2.0/24 stays reachable as a directly-connected route on the Vagrant management interface — SSH unaffected.
       node.vm.provision "shell", name: "routing", run: "always", inline: <<~SHELL

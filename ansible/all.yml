@@ -26,6 +26,9 @@
 - name: AI Services
   import_playbook: ai.yml
 
+- name: LLM Pipeline
+  import_playbook: llm_pipeline.yml
+
 - name: Vulnerable Web App (Lab)
   import_playbook: dvwa.yml
 
