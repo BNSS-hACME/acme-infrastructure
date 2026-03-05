@@ -150,6 +150,12 @@ make
 
 This decrypts the vault-encrypted SSH key to `/tmp/acme_rpi_id_ed25519`.
 
+Now you can run the `raspberrypi.yml` playbook, which will configure the Raspberry Pi's.
+
+```bash
+ansible-playbook raspberrypi.yml
+```
+
 ## Project Structure
 
 ```
