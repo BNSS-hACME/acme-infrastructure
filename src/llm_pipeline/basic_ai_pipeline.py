@@ -155,6 +155,8 @@ def normalize_finding(payload):
     if attack_type not in ALLOWED_ATTACK_TYPES:
         attack_type = None
 
+    if not malicious:
+        attack_type = "Benign/normal traffic"
     raw_confidence = payload.get("confidence", 0.0)
     try:
         confidence = float(raw_confidence)
