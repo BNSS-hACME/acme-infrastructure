@@ -242,7 +242,7 @@ def print_per_request_table(rows):
 
 
 def print_summary(rows):
-    both = sum(1 for r in rows if r["agree"].startswith("# Both"))
+    both = sum(1 for r in rows if r["agree"].startswith("+ Both"))
     benign = sum(1 for r in rows if r["agree"] == "+ Benign")
     differ = sum(1 for r in rows if r["agree"].startswith("~"))
     modsec_only = sum(1 for r in rows if r["agree"] == "- ModSec only")
