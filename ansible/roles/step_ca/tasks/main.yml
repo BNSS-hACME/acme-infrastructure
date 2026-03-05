@@ -99,6 +99,28 @@
   changed_when: "'changed' in step_ca_json_update.stdout"
   notify: Restart step-ca
 
+- name: Enable CRL generation in Step CA config
+  ansible.builtin.shell: |
+    python3 -c "
+    import json
+    with open('/etc/step-ca/config/ca.json', 'r') as f:
+        data = json.load(f)
+    # idpURL makes step-ca include an IssuingDistributionPoint in the CRL AND
+    # a matching CRL Distribution Points extension in every issued cert.
+    # Both pointing to the same URL satisfies OpenSSL's scope check.
+    want = {'enabled': True, 'cacheDuration': '8h', 'renewalDuration': '4h', 'idpURL': '{{ step_ca_url }}/crl'}
+    if data.get('crl') != want:
+        data['crl'] = want
+        with open('/etc/step-ca/config/ca.json', 'w') as f:
+            json.dump(data, f, indent=4)
+        print('changed')
+    else:
+        print('unchanged')
+    "
+  register: step_ca_crl_update
+  changed_when: "'changed' in step_ca_crl_update.stdout"
+  notify: Restart step-ca
+
 - name: Fix ownership of step-ca directory recursively
   ansible.builtin.file:
     path: /etc/step-ca
