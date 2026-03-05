@@ -1,0 +1,15 @@
+[connection]
+id={{ raspberrypi_lan_interface }}-lan
+type=ethernet
+interface-name={{ raspberrypi_lan_interface }}
+
+[ethernet]
+
+[ipv4]
+address1={{ raspberrypi_lan_ip }}/{{ raspberrypi_lan_prefix }}
+method=manual
+never-default=true
+
+[ipv6]
+addr-gen-mode=default
+method=auto

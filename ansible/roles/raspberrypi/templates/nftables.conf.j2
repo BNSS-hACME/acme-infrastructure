@@ -1,0 +1,28 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+    chain input {
+        type filter hook input priority filter; policy accept;
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+        # LAN → WAN
+        iifname "{{ raspberrypi_lan_interface }}" oifname "{{ raspberrypi_wan_interface }}" accept
+        # WAN → LAN (return traffic only)
+        iifname "{{ raspberrypi_wan_interface }}" oifname "{{ raspberrypi_lan_interface }}" ct state { established, related } accept
+    }
+
+    chain output {
+        type filter hook output priority filter; policy accept;
+    }
+}
+
+table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        oifname "{{ raspberrypi_wan_interface }}" masquerade
+    }
+}
