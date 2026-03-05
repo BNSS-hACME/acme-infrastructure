@@ -51,8 +51,8 @@ In Stockholm, the internal VM subnet is `10.0.50.0/24`. The Raspberry Pi at each
 
 | Device             | Host             | LAN IP       | Description                                              |
 | ------------------ | ---------------- | ------------ | -------------------------------------------------------- |
-| RPi 1              | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the stockholm physical router |
-| RPi 2              | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the london physical router    |
+| RPi 1              | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the Stockholm physical router |
+| RPi 2              | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the London physical router    |
 | ASUS AC1900 Router | acme-stockholm   | 10.0.10.1    | Router and AP for Stockholm site                         |
 | ASUS AC1900 Router | acme-london      | 10.0.20.1    | Router and AP for London site                            |
 
@@ -104,13 +104,7 @@ cp .envrc.example .envrc
 direnv allow .
 ```
 
-Then start the VMs:
-
-```bash
-vagrant up
-```
-
-Run the setup script to generate the SSH config for Ansible:
+Run the setup script to start the VMS and generate the SSH config for Ansible:
 
 ```bash
 ./setup.sh
@@ -142,7 +136,7 @@ ansible-playbook all.yml
 
 ### 4. Configure Raspberry Pis
 
-To manage the Raspberry Pis, first decrypt the SSH key:
+To manage the Raspberry Pis, first decrypt the SSH key (from the `ansible` directory):
 
 ```bash
 make
