@@ -201,7 +201,7 @@ SecAuditLogParts ABDEFHIJZ
 # Use a single file for logging. This is much easier to look at, but
 # assumes that you will use the audit log only occasionally.
 #
-SecAuditLogType JSON
+SecAuditLogType Serial
 SecAuditLog /var/log/apache2/modsec_audit.log
 
 # Specify the path for concurrent audit logging.

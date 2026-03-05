@@ -85,20 +85,20 @@ def parse_modsec_serial_log(path):
         content = fh.read()
 
     # Split by boundary markers (Serial format uses -- boundaries)
-    entries = re.split(r'--[a-f0-9]{8}--Z--', content)
+    entries = re.split(r'--[a-f0-9]{8}-+Z--', content)
     
     for entry in entries:
         if not entry.strip():
             continue
             
         # Extract unique_id from section A
-        uid_match = re.search(r'--[a-f0-9]{8}--A--.*?\n\[.*?\]\s+(\S+)', entry, re.DOTALL)
+        uid_match = re.search(r'--[a-f0-9]{8}-+A--.*?\n\[.*?\]\s+(\S+)', entry, re.DOTALL)
         if not uid_match:
             continue
         uid = uid_match.group(1)
         
         # Extract rule matches from section H
-        h_section = re.search(r'--[a-f0-9]{8}--H--(.*?)(?:--[a-f0-9]{8}--|$)', entry, re.DOTALL)
+        h_section = re.search(r'--[a-f0-9]{8}-+H--(.*?)(?:--[a-f0-9]{8}-+|$)', entry, re.DOTALL)
         if not h_section:
             continue
             

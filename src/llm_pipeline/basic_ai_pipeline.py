@@ -99,6 +99,15 @@ def build_prompt(log_chunk, prompt_template):
     return f"{prompt_template.rstrip()}\n\nAnalyze the following logs:\n{log_chunk}"
 
 
+def extract_json_from_code_block(text):
+    """Extract JSON from markdown code blocks (```json ... ```)."""
+    # Try to match ```json ... ``` or ``` ... ```
+    match = re.search(r"```(?:json)?\s*\r?\n?(.*?)\r?\n?```", text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return text
+
+
 def analyze_logs_with_llm(log_chunk, prompt_template, client):
     prompt = build_prompt(log_chunk, prompt_template)
 
@@ -125,7 +134,10 @@ def analyze_logs_with_llm(log_chunk, prompt_template, client):
             if not result_text:
                 print("Error: Received an empty response from the LLM.", file=sys.stderr)
                 return None
-            return json.loads(result_text)
+            
+            # Try to extract JSON from code blocks if present
+            extracted_json = extract_json_from_code_block(result_text)
+            return json.loads(extracted_json)
         except (APIConnectionError, APITimeoutError, APIError) as connection_error:
             if attempt == 3:
                 print(f"Error connecting to LLM API: {connection_error}", file=sys.stderr)

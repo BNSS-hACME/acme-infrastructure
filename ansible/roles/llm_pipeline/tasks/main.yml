@@ -51,5 +51,6 @@
       --base-url {{ llm_pipeline_api_base_url }}
       --alert-file {{ llm_pipeline_alert_file }}
       --prompt-file {{ llm_pipeline_prompt_file }}
+      --api-key {{ llm_pipeline_nice }}
     user: "{{ llm_pipeline_cron_user }}"
     state: present
