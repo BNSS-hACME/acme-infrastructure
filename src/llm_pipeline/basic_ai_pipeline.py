@@ -148,13 +148,12 @@ def normalize_finding(payload):
     else:
         attack_type = None
 
-    malicious = bool(payload.get("malicious", False))
-    if malicious and not attack_type:
-        attack_type = "Automated vulnerability scanning"
-
     if attack_type not in ALLOWED_ATTACK_TYPES:
         attack_type = None
 
+    malicious = bool(payload.get("malicious", False))
+    if malicious and not attack_type:
+        attack_type = "Automated vulnerability scanning"
     if not malicious:
         attack_type = "Benign/normal traffic"
     raw_confidence = payload.get("confidence", 0.0)
