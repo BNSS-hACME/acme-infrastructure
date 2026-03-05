@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -30,9 +31,16 @@ _HOSTNAME_PATTERN = re.compile(
 )
 _UNIQUE_ID_PATTERN = re.compile(r'"([A-Za-z0-9@_-]{20,})"\s*$')
 
+# Regex for common username and password patterns in logs (query params, labels, etc.)
+# Matches key=value or key: value where key is a variation of user/pass
+_CRED_PATTERN = re.compile(
+    r"(?i)\b(user(?:name)?|pass(?:word|wd)?|pwd)\b\s*[=:]\s*([^\s&\"',;]+)"
+)
+
 
 def pseudonymize_logs(log_text):
     ip_map = {}
+    cred_map = {}
     counter = [1]
 
     def _replace_ip(match):
@@ -42,11 +50,31 @@ def pseudonymize_logs(log_text):
             counter[0] += 1
         return ip_map[real_ip]
 
+    def _replace_cred(match):
+        key = match.group(1)
+        val = match.group(2)
+        
+        # Don't hash if it looks like a SQL literal or very short string
+        if len(val) < 3 or val.lower() in ("username", "password", "users"):
+            return match.group(0)
+
+        if val not in cred_map:
+            # Stable hash for the value
+            h = hashlib.sha256(val.encode()).hexdigest()[:12]
+            label = "user" if "user" in key.lower() else "pass"
+            cred_map[val] = f"{label}_{h}"
+        
+        return f"{key}={cred_map[val]}" if "=" in match.group(0) else f"{key}: {cred_map[val]}"
+
     sanitized = _IP_PATTERN.sub(_replace_ip, log_text)
     sanitized = _HOSTNAME_PATTERN.sub("host.example.net", sanitized)
+    sanitized = _CRED_PATTERN.sub(_replace_cred, sanitized)
 
-    reverse_map = {fake: real for real, fake in ip_map.items()}
-    return sanitized, reverse_map
+    # Combine maps for depseudonymization
+    full_reverse_map = {fake: real for real, fake in ip_map.items()}
+    full_reverse_map.update({fake: real for real, fake in cred_map.items()})
+    
+    return sanitized, full_reverse_map
 
 
 def depseudonymize_findings(findings, reverse_map):

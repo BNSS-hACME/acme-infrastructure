@@ -6,7 +6,7 @@
 
     <Directory /var/www/html/dvwa>
         AllowOverride None
-        Require local
+        Require all granted
     </Directory>
 
     LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" \"%{UNIQUE_ID}e\"" combined_uid
