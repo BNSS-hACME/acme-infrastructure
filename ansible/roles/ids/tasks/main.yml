@@ -169,3 +169,52 @@
     state: started
     enabled: true
   when: ids_install_evebox | bool
+
+# ---- Active Response ----
+
+- name: Install jq for active response
+  ansible.builtin.apt:
+    name: jq
+    state: present
+  when: ids_active_response_enabled
+
+- name: Create active response directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /opt/ids
+    - /var/log/ids
+    - /var/run/ids
+  when: ids_active_response_enabled
+
+- name: Deploy active response script
+  ansible.builtin.template:
+    src: active-response.sh.j2
+    dest: /opt/ids/active-response.sh
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart active-response
+  when: ids_active_response_enabled
+
+- name: Deploy active response systemd service
+  ansible.builtin.template:
+    src: active-response.service.j2
+    dest: /etc/systemd/system/active-response.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart active-response
+  when: ids_active_response_enabled
+
+- name: Enable and start active response
+  ansible.builtin.systemd:
+    name: active-response
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: ids_active_response_enabled

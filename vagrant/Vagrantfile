@@ -143,7 +143,7 @@ Vagrant.configure("2") do |config|
 
     router.vm.provider :virtualbox do |vb|
       vb.name = "acme-router.server.acme"
-      vb.memory = 2048
+      vb.memory = 3072
       vb.cpus = 1
     end
   end

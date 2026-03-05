@@ -287,3 +287,31 @@
     name: openvpn-auth-oauth2
     enabled: true
     state: started
+
+# ---- Policy routing: force VPN client traffic through router for IDS ----
+
+- name: Add vpn_via_router routing table
+  ansible.builtin.lineinfile:
+    path: /etc/iproute2/rt_tables
+    line: "100 vpn_via_router"
+    regexp: "^100\\s"
+    state: present
+
+- name: Deploy VPN policy routing script
+  ansible.builtin.copy:
+    dest: /etc/network/if-up.d/vpn-policy-route
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      # Force VPN client traffic through router for IDS inspection
+      ip rule add from {{ openvpn_vpn_subnet }}/24 table 100 2>/dev/null || true
+      ip route replace default via 10.0.50.1 table 100
+  notify: Apply vpn policy route
+
+- name: Apply VPN policy routing now
+  ansible.builtin.shell: |
+    ip rule add from {{ openvpn_vpn_subnet }}/24 table 100 2>/dev/null || true
+    ip route replace default via 10.0.50.1 table 100
+  changed_when: false

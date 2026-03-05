@@ -8,3 +8,8 @@
   ansible.builtin.service:
     name: evebox
     state: restarted
+
+- name: Restart active-response
+  ansible.builtin.systemd:
+    name: active-response
+    state: restarted

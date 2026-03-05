@@ -1,0 +1,4 @@
+---
+profile: production
+enable_list:
+  - yaml[line-length]

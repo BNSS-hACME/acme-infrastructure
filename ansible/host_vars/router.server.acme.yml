@@ -1,9 +1,15 @@
 ---
+# Suricata monitors all interfaces on the router:
+#   enp0s8  = bridged (external), sees WLAN traffic
+#   enp0s9  = internal, sees VPN client traffic (after policy routing)
+#   enp0s10 = additional interface
 ids_interfaces:
+  - enp0s8
   - enp0s9
   - enp0s10
 ids_home_nets:
   - "10.0.10.0/24"
   - "10.0.50.0/24"
+  - "10.0.11.0/24"
 ids_install_evebox: true
 ids_evebox_host: 0.0.0.0
