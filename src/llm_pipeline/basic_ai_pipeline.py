@@ -266,7 +266,10 @@ def read_last_lines(log_file, line_count):
     if not path.exists():
         raise FileNotFoundError(f"Log file not found: {log_file}")
 
-    if line_count <= 0:
+    if line_count == 0:
+        # Read the entire file when line_count is 0 (common "all lines" convention).
+        return path.read_text(encoding="utf-8", errors="replace").strip()
+    if line_count < 0:
         return ""
 
     block_size = 8192
