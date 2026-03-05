@@ -84,7 +84,7 @@ We recommend to install direnv, make sure to hook it to your shell.
 brew install python direnv
 ```
 
-When you `cd ansible`, you can run `direnv allow` which will load the default `.envrc`. This will setup a new Python virtualenv automatically. Once inside this virtualenv, you can do:
+When you `cd ansible`, you can run `direnv allow` which will load the default `.envrc`. This will set up a new Python virtualenv automatically. Once inside this virtualenv, you can do:
 
 ```
 pip install -r requirements.txt
