@@ -28,18 +28,21 @@
     state: present
     update_cache: true
 
-- name: Ensure IDS directories exist
+- name: Ensure IDS log directory exists and is writable by Suricata
   ansible.builtin.file:
-    path: "{{ item.path }}"
+    path: "{{ ids_log_dir }}"
+    state: directory
+    owner: suricata
+    group: suricata
+    mode: "0755"
+
+- name: Ensure IDS rule directory exists
+  ansible.builtin.file:
+    path: "{{ ids_rule_path }}"
     state: directory
     owner: root
     group: root
-    mode: "{{ item.mode }}"
-  loop:
-    - path: "{{ ids_log_dir }}"
-      mode: "0755"
-    - path: "{{ ids_rule_path }}"
-      mode: "0755"
+    mode: "0755"
 
 - name: Ensure Suricata rule files exist for first run validation
   ansible.builtin.copy:
