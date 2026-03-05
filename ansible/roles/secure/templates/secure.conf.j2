@@ -1,0 +1,37 @@
+<VirtualHost *:80>
+    ServerName {{ inventory_hostname }}
+    Redirect permanent / https://{{ inventory_hostname }}/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName {{ inventory_hostname }}
+
+    # Step-CA Certificates
+    SSLEngine on
+    SSLCertificateFile /etc/apache2/ssl/tls.crt
+    SSLCertificateKeyFile /etc/apache2/ssl/tls.key
+
+    # OpenIDC Configuration
+    OIDCProviderMetadataURL https://auth.server.acme:8443/realms/acme-realm/.well-known/openid-configuration
+    OIDCSSLValidateServer On
+    OIDCCABundlePath /etc/apache2/ssl/step-ca.crt
+    OIDCClientID secure-client
+    OIDCClientSecret {{ vault_secure_oidc_secret }}
+    OIDCRedirectURI https://{{ inventory_hostname }}/oauth2/callback
+    OIDCCryptoPassphrase {{ vault_secure_oidc_passphrase }}
+    OIDCPassClaimsAs environment
+
+    # Map the "preferred_username" claim from Keycloak to the REMOTE_USER variable
+    OIDCAuthNHeader REMOTE_USER
+
+    # Document Root Strategy
+    DocumentRoot /var/www/html
+    DirectoryIndex index.cgi index.html
+
+    <Directory /var/www/html>
+        Options +ExecCGI
+        AddHandler cgi-script .cgi
+        Require valid-user
+        AuthType openid-connect
+    </Directory>
+</VirtualHost>
