@@ -14,7 +14,7 @@ This project is part of a course on network security and implements a full IAM a
 Internet / ISP
       |
   [eth0 DHCP]
-  Raspberry Pi          ← physical device, one per site (stockholm / london)
+  Raspberry Pi          ← physical device, one per site (Stockholm / London)
   [eth1 192.168.50.1]
       |   192.168.50.0/24
   Physical Router       ← gets address via RPi DHCP (192.168.50.x)
