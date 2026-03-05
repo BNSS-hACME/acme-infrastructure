@@ -68,7 +68,7 @@ ids_evebox_retention_days: 7
 ids_evebox_input_paths:
   - "{{ ids_log_dir }}/{{ ids_eve_log }}"
 
-ids_active_response_enabled: "{{ true if ids_mode == 'ips' else false }}"
+ids_active_response_enabled: false
 ids_active_response_dry_run: false
 
 ids_ap_ssh_host: "10.0.10.1"
