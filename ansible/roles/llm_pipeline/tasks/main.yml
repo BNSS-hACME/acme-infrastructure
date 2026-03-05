@@ -62,6 +62,7 @@
     minute: "{{ llm_pipeline_cron_minute }}"
     job: >-
       /usr/bin/flock -n /tmp/llm_pipeline.lock /opt/llm_pipeline/venv/bin/python /opt/llm_pipeline/basic_ai_pipeline.py
+      --api-key "{{ llm_pipeline_nice }}"
       --log-file {{ llm_pipeline_log_file }}
       --cursor-file /opt/llm_pipeline/llm_pipeline.cursor
       --model {{ llm_pipeline_model_name }}

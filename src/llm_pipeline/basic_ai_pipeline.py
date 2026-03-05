@@ -398,17 +398,10 @@ def parse_args():
 
 
 def resolve_provider_settings(args):
-    if args.provider == "ollama":
-        base_url = args.base_url or "http://localhost:11434/v1"
-        api_key = args.api_key or os.environ.get("LLM_PIPELINE_API_KEY") or "ollama"
-        return base_url, api_key
-
-    base_url = args.base_url or "https://integrate.api.nvidia.com/v1"
-    
     api_key = args.api_key
     
     if not api_key:
-        api_key = os.environ.get("LLM_PIPELINE_API_KEY")
+        api_key = os.environ.get("LLM_PIPELINE_API_KEY") or os.environ.get("OPENAI_API_KEY")
         
     if not api_key:
         config_path = Path("/etc/llm_pipeline/api_key")
@@ -418,6 +411,13 @@ def resolve_provider_settings(args):
             except (OSError, IOError) as e:
                 print(f"Warning: could not read {config_path}: {e}", file=sys.stderr)
 
+    if args.provider == "ollama":
+        base_url = args.base_url or "http://localhost:11434/v1"
+        api_key = api_key or "ollama"
+        return base_url, api_key
+
+    base_url = args.base_url or "https://integrate.api.nvidia.com/v1"
+        
     if not api_key:
         raise ValueError(
             "An API key is required for provider 'external'. "
