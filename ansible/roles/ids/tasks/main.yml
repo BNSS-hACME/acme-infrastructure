@@ -65,6 +65,15 @@
     force: false
   loop: "{{ ids_rule_files }}"
 
+- name: Deploy Suricata threshold config
+  ansible.builtin.template:
+    src: suricata-threshold.conf.j2
+    dest: "{{ ids_threshold_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart IDS
+
 - name: Deploy IDS config
   ansible.builtin.template:
     src: suricata.yaml.j2
@@ -87,12 +96,45 @@
       {% endif %}
   notify: Restart IDS
 
+- name: Deploy Suricata rule update config
+  ansible.builtin.template:
+    src: suricata-update.yaml.j2
+    dest: /etc/suricata/update.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy Suricata enable rule patterns
+  ansible.builtin.template:
+    src: suricata-enable.conf.j2
+    dest: /etc/suricata/enable.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy Suricata disable rule patterns
+  ansible.builtin.template:
+    src: suricata-disable.conf.j2
+    dest: /etc/suricata/disable.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy Suricata drop rule patterns
+  ansible.builtin.template:
+    src: suricata-drop.conf.j2
+    dest: /etc/suricata/drop.conf
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Update Suricata rules
-  ansible.builtin.command: suricata-update
+  ansible.builtin.command:
+    cmd: suricata-update --config /etc/suricata/update.yaml
   register: ids_rules_update
-  failed_when: ids_rules_update.rc not in [0, 1]
-  changed_when: "'No changes detected' not in ids_rules_update.stdout"
-  until: ids_rules_update.rc in [0, 1]
+  failed_when: ids_rules_update.rc != 0
+  changed_when: "'No changes detected' not in ((ids_rules_update.stdout | default('')) ~ (ids_rules_update.stderr | default('')))"
+  until: ids_rules_update.rc == 0
   retries: 3
   delay: 5
   when: ids_update_rules | bool

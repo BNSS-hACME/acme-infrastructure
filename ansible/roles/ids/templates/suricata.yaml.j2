@@ -39,6 +39,7 @@ rule-files:
 {% for rule_file in ids_rule_files %}
   - {{ rule_file }}
 {% endfor %}
+threshold-file: {{ ids_threshold_config_path }}
 
 af-packet:
 {% for ids_monitored_interface in ids_interfaces %}
@@ -79,7 +80,20 @@ outputs:
       filename: {{ ids_eve_log }}
       types:
 {% for eve_type in ids_eve_types %}
+{% if eve_type == 'http' %}
+        - http:
+            extended: yes
+            dump-all-headers: both
+{% elif eve_type == 'alert' %}
+        - alert:
+            payload: yes
+            payload-buffer-size: 4kb
+            payload-printable: yes
+            packet: yes
+            http-body: yes
+{% else %}
         - {{ eve_type }}
+{% endif %}
 {% endfor %}
 
 

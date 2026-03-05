@@ -14,15 +14,36 @@ ids_eve_log: eve.json
 ids_eve_types:
   - alert
   - dns
-  - http
   - tls
-  - ssh
-  - dhcp
+  - http
   - flow
+  - drop
+  - fileinfo
 
 ids_rule_path: /var/lib/suricata/rules
 ids_rule_files:
   - suricata.rules
+ids_rule_sources:
+  - et/open
+ids_rule_enable_patterns: []
+ids_rule_disable_patterns:
+  - "group:emerging-chat"
+  - "group:emerging-games"
+  - "group:emerging-p2p"
+  - "group:emerging-policy"
+  - "re:^ET INFO "
+ids_rule_drop_patterns:
+  - "group:emerging-scan"
+  - "group:emerging-policy"
+  - "group:emerging-malware"
+  - "group:emerging-web_server"
+  - "group:emerging-web_specific_apps"
+  - "group:emerging-sql"
+  - "group:emerging-exploit"
+ids_threshold_config_path: /etc/suricata/threshold.config
+ids_threshold_config_lines:
+  - "event_filter gen_id 1, sig_id 0, type limit, track by_src, count 20, seconds 60"
+  - "event_filter gen_id 1, sig_id 0, type limit, track by_dst, count 40, seconds 60"
 
 ids_app_layer_protocols:
   http:
