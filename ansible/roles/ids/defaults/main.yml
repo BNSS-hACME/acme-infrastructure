@@ -2,7 +2,7 @@
 ids_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
 ids_interfaces:
   - "{{ ids_interface }}"
-ids_mode: ids # detect-only first
+ids_mode: ids
 ids_home_net: "10.0.50.0/24"
 ids_home_nets:
   - "{{ ids_home_net }}"
@@ -61,7 +61,7 @@ ids_evebox_data_dir: /var/lib/evebox
 ids_evebox_host: 127.0.0.1
 ids_evebox_port: 5636
 ids_evebox_auth_required: false
-ids_evebox_tls_enabled: false
+ids_evebox_tls_enabled: true
 ids_evebox_retention_days: 7
 ids_evebox_input_paths:
   - "{{ ids_log_dir }}/{{ ids_eve_log }}"
