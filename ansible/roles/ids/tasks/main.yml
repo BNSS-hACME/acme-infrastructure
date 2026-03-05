@@ -59,6 +59,20 @@
     validate: "suricata -T -c %s"
   notify: Restart IDS
 
+- name: Configure Suricata startup options
+  ansible.builtin.copy:
+    dest: /etc/default/suricata
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% if ids_mode == 'ips' %}
+      SURICATA_OPTIONS="-q 0"
+      {% else %}
+      SURICATA_OPTIONS="--af-packet"
+      {% endif %}
+  notify: Restart IDS
+
 - name: Update Suricata rules
   ansible.builtin.command: suricata-update
   register: ids_rules_update
@@ -169,6 +183,47 @@
     state: started
     enabled: true
   when: ids_install_evebox | bool
+
+- name: Install iptables-persistent for NFQUEUE rules
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: ids_mode == 'ips'
+
+- name: Add NFQUEUE rule for FORWARD chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: FORWARD
+    jump: NFQUEUE
+    queue_num: "0"
+    action: insert
+    comment: "Suricata IPS inline inspection"
+  when: ids_mode == 'ips'
+  notify: Save iptables rules
+
+- name: Add NFQUEUE rule for INPUT chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: INPUT
+    jump: NFQUEUE
+    queue_num: "0"
+    action: insert
+    comment: "Suricata IPS inline inspection"
+  when: ids_mode == 'ips'
+  notify: Save iptables rules
+
+- name: Remove NFQUEUE rules when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ item }}"
+    jump: NFQUEUE
+    queue_num: "0"
+    state: absent
+    comment: "Suricata IPS inline inspection"
+  loop:
+    - FORWARD
+    - INPUT
+  when: ids_mode == 'ids'
+  notify: Save iptables rules
 
 # ---- Active Response ----
 

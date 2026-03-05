@@ -14,6 +14,7 @@ BLOCK_DURATION="{{ ids_block_duration }}"
 MIN_SEVERITY="{{ ids_min_alert_severity }}"
 MAX_SEVERITY="{{ ids_max_alert_severity }}"
 VPN_SUBNET="{{ ids_vpn_subnet }}"
+DRY_RUN="{{ ids_active_response_dry_run | lower }}"
 EVE_LOG="{{ ids_log_dir }}/{{ ids_eve_log }}"
 LOG_FILE="/var/log/ids/active-response.log"
 BLOCK_LIST="/var/run/ids/blocked-ips.txt"
@@ -148,6 +149,16 @@ while IFS=$'\t' read -r attacker_ip severity signature; do
   fi
 
   log_msg "ALERT severity=$severity src=$attacker_ip sig=\"$signature\""
+
+  # Dry-run: log only, don't block
+  if [[ "$DRY_RUN" == "true" ]]; then
+    if is_vpn_client "$attacker_ip"; then
+      log_msg "DRY RUN: Would block $attacker_ip on ROUTER (VPN client)"
+    else
+      log_msg "DRY RUN: Would block $attacker_ip on AP ($AP_HOST)"
+    fi
+    continue
+  fi
 
   # Track blocked IP
   echo "$attacker_ip" >> "$BLOCK_LIST"

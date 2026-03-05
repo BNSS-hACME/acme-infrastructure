@@ -256,10 +256,13 @@
     enabled: true
     state: started
 
-- name: Enable IP forwarding (persistent)
+- name: Enable IP forwarding and loose rp_filter (persistent)
   ansible.builtin.copy:
     dest: /etc/sysctl.d/99-openvpn.conf
-    content: "net.ipv4.ip_forward = 1\n"
+    content: |
+      net.ipv4.ip_forward = 1
+      net.ipv4.conf.all.rp_filter = 2
+      net.ipv4.conf.default.rp_filter = 2
     mode: "0644"
   notify: Apply sysctl
 

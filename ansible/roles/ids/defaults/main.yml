@@ -68,24 +68,20 @@ ids_evebox_retention_days: 7
 ids_evebox_input_paths:
   - "{{ ids_log_dir }}/{{ ids_eve_log }}"
 
-# ---- Active Response ----
-ids_active_response_enabled: true
+ids_active_response_enabled: "{{ true if ids_mode == 'ips' else false }}"
+ids_active_response_dry_run: false
 
-# AP (WLAN) – blocks external/WLAN attackers via SSH
 ids_ap_ssh_host: "10.0.10.1"
 ids_ap_ssh_user: "root"
 ids_ap_ssh_port: 22
 ids_ap_ssh_key: "/root/.ssh/ap_response_key"
 
-# Block settings
-ids_block_duration: 3600 # seconds until auto-unblock
-ids_min_alert_severity: 1 # 1 = highest severity
-ids_max_alert_severity: 2 # block severity 1 + 2
+ids_block_duration: 3600
+ids_min_alert_severity: 1
+ids_max_alert_severity: 2
 
-# VPN client subnet (traffic from here → block on router, not AP)
 ids_vpn_subnet: "10.0.11.0/24"
 
-# IPs that are never blocked
 ids_whitelist_ips:
   - "10.0.50.0/24"
   - "10.0.10.50"

@@ -13,3 +13,8 @@
   ansible.builtin.systemd:
     name: active-response
     state: restarted
+
+- name: Save iptables rules
+  ansible.builtin.command:
+    cmd: netfilter-persistent save
+  changed_when: false

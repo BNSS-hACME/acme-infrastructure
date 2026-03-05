@@ -48,6 +48,16 @@ af-packet:
     defrag: yes
 {% endfor %}
 
+{% if ids_mode_normalized == 'ips' %}
+nfq:
+  mode: accept
+  repeat-mark: 1
+  repeat-mask: 1
+  route-queue: 2
+  batchcount: 20
+  fail-open: yes
+{% endif %}
+
 stream:
   inline: {{ 'yes' if ids_mode_normalized == 'ips' else 'no' }}
 
