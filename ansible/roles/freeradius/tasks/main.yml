@@ -14,7 +14,7 @@
     enabled: true
 - name: Ensure FreeRADIUS cert directory exists
   ansible.builtin.file:
-    path: /etc/freeradius/certs
+    path: /etc/freeradius/3.0/certs
     state: directory
     owner: freerad
     group: freerad
@@ -45,12 +45,12 @@
 
 - name: Remove old RADIUS certificate if present
   ansible.builtin.file:
-    path: /etc/freeradius/certs/radius.crt
+    path: /etc/freeradius/3.0/certs/radius.crt
     state: absent
 
 - name: Remove old RADIUS key if present
   ansible.builtin.file:
-    path: /etc/freeradius/certs/radius.key
+    path: /etc/freeradius/3.0/certs/radius.key
     state: absent
 
 - name: Generate RADIUS certificate
@@ -105,12 +105,6 @@
     group: freerad
     mode: "0640"
 
-- name: Set permissions on CA bundle
-  ansible.builtin.file:
-    path: /etc/freeradius/3.0/certs/ca_bundle.pem
-    owner: freerad
-    group: freerad
-    mode: "0640"
 - name: Write freeradius eap config
   ansible.builtin.template:
     src: eap.j2
@@ -120,14 +114,4 @@
     mode: "0640"
   notify: Restart FreeRADIUS
 
-# - name: Configure FreeRADIUS TLS (step-ca integration)
-#  blockinfile:
-#    path: /etc/freeradius/3.0/mods-enabled/eap
-#    marker: "# {mark} ANSIBLE TLS CONFIG"
-#    block: |
-#      tls-config tls-common {
-#          certificate_file = /etc/freeradius/3.0/certs/auth.server.acme.crt
-#          private_key_file = /etc/freeradius/3.0/certs/auth.server.acme.key
-#          ca_file = /etc/freeradius/3.0/certs/ca_bundle.pem
-#      }
-#  notify: Restart FreeRADIUS
+
