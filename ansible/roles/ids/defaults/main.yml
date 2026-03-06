@@ -18,7 +18,7 @@ ids_eve_types:
   - http
   - flow
   - drop
-  - fileinfo
+  - files
 
 ids_rule_path: /var/lib/suricata/rules
 ids_rule_files:
@@ -66,14 +66,9 @@ ids_app_layer_protocols:
         double-decode-path: false
         double-decode-query: false
   tls: {}
-  dns: {}
   ssh: {}
   udp: {}
   tcp: {}
-  dnp3:
-    detection-enabled: true
-  modbus:
-    detection-enabled: true
 
 ids_update_rules: true
 ids_nfqueue_chain: SURICATA_NFQUEUE
