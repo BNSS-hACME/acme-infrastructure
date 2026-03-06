@@ -174,7 +174,7 @@ All other configuration is within variables inside the `ansible` directory. All 
 - [Ollama](https://ollama.com/) — Local AI service
 - [DVWA](https://github.com/digininja/DVWA) — Damn Vulnerable Web Application
 - [Ansible](https://docs.ansible.com/) — Configuration management
-- [Solitara](https://suricata.io) - Intrution Detection
+- [Suricata](https://suricata.io) - Intrution Detection
 - [ModSecurity](https://modsecurity.org) - ModSecurity
 
 ## License
