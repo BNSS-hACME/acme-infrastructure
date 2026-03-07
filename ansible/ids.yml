@@ -3,5 +3,4 @@
   hosts: ids
   become: true
   roles:
-    - common
     - ids
