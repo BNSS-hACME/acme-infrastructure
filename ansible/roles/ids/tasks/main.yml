@@ -6,6 +6,15 @@
     fail_msg: "ids_mode must be either 'ids' or 'ips'."
     quiet: true
 
+- name: Validate IDS NFQUEUE number
+  ansible.builtin.assert:
+    that:
+      - ids_nfqueue_num | int >= 0
+      - ids_nfqueue_num | int <= 65535
+    fail_msg: "ids_nfqueue_num must be in the range 0-65535."
+    quiet: true
+  when: ids_mode | lower == 'ips'
+
 - name: Normalize IDS mode value
   ansible.builtin.set_fact:
     ids_mode_normalized: "{{ ids_mode | lower }}"
@@ -81,7 +90,7 @@
     mode: "0644"
     content: |
       {% if ids_mode_normalized == 'ips' %}
-      SURICATA_OPTIONS="-q 0"
+      SURICATA_OPTIONS="-q {{ ids_nfqueue_num }}"
       {% else %}
       SURICATA_OPTIONS="--af-packet"
       {% endif %}
@@ -243,12 +252,41 @@
   notify: Save iptables rules
 
 - name: Add NFQUEUE rule in Suricata chain (IPS inline)
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    jump: NFQUEUE
-    action: insert
-    comment: "Suricata IPS inline inspection"
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -C
+      - "{{ ids_nfqueue_chain }}"
+      - -j
+      - NFQUEUE
+      - --queue-num
+      - "{{ ids_nfqueue_num | string }}"
+      - -m
+      - comment
+      - --comment
+      - Suricata IPS inline inspection
+  register: suricata_nfqueue_rule_check
+  changed_when: false
+  failed_when: suricata_nfqueue_rule_check.rc not in [0, 1]
   when: ids_mode_normalized == 'ips'
+
+- name: Insert NFQUEUE rule in Suricata chain when missing (IPS inline)
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -I
+      - "{{ ids_nfqueue_chain }}"
+      - -j
+      - NFQUEUE
+      - --queue-num
+      - "{{ ids_nfqueue_num | string }}"
+      - -m
+      - comment
+      - --comment
+      - Suricata IPS inline inspection
+  when:
+    - ids_mode_normalized == 'ips'
+    - suricata_nfqueue_rule_check.rc == 1
   notify: Save iptables rules
 
 - name: Add Suricata chain jump for FORWARD chain (IPS inline)
@@ -282,12 +320,41 @@
   notify: Save iptables rules
 
 - name: Remove NFQUEUE rule from Suricata chain when in IDS mode
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    jump: NFQUEUE
-    state: absent
-    comment: "Suricata IPS inline inspection"
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -C
+      - "{{ ids_nfqueue_chain }}"
+      - -j
+      - NFQUEUE
+      - --queue-num
+      - "{{ ids_nfqueue_num | string }}"
+      - -m
+      - comment
+      - --comment
+      - Suricata IPS inline inspection
+  register: suricata_nfqueue_rule_present
+  changed_when: false
+  failed_when: suricata_nfqueue_rule_present.rc not in [0, 1]
   when: ids_mode_normalized == 'ids'
+
+- name: Remove NFQUEUE rule from Suricata chain when present (IDS mode)
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - -D
+      - "{{ ids_nfqueue_chain }}"
+      - -j
+      - NFQUEUE
+      - --queue-num
+      - "{{ ids_nfqueue_num | string }}"
+      - -m
+      - comment
+      - --comment
+      - Suricata IPS inline inspection
+  when:
+    - ids_mode_normalized == 'ids'
+    - suricata_nfqueue_rule_present.rc == 0
   notify: Save iptables rules
 
 - name: Remove Suricata NFQUEUE chain when in IDS mode

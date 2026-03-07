@@ -40,6 +40,7 @@ rule-files:
   - {{ rule_file }}
 {% endfor %}
 
+{% if ids_mode_normalized == 'ids' %}
 af-packet:
 {% for ids_monitored_interface in ids_interfaces %}
   - interface: {{ ids_monitored_interface }}
@@ -47,13 +48,14 @@ af-packet:
     cluster-type: cluster_flow
     defrag: yes
 {% endfor %}
+{% endif %}
 
 {% if ids_mode_normalized == 'ips' %}
 nfq:
   mode: accept
   repeat-mark: 1
   repeat-mask: 1
-  route-queue: 2
+  route-queue: {{ ids_nfqueue_num }}
   batchcount: 20
   fail-open: yes
 {% endif %}

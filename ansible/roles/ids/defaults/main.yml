@@ -56,6 +56,7 @@ ids_app_layer_protocols:
 
 ids_update_rules: true
 ids_nfqueue_chain: SURICATA_NFQUEUE
+ids_nfqueue_num: 0
 ids_install_evebox: false
 ids_evebox_repo_trusted: true
 ids_suricata_group: suricata
