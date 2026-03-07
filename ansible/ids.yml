@@ -1,0 +1,7 @@
+---
+- name: Install and configure IDS
+  hosts: ids
+  become: true
+  roles:
+    - common
+    - ids

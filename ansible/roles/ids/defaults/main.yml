@@ -1,0 +1,90 @@
+---
+ids_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
+ids_interfaces:
+  - "{{ ids_interface }}"
+ids_mode: ids
+ids_home_net: "10.0.50.0/24"
+ids_home_nets:
+  - "{{ ids_home_net }}"
+  - "10.0.10.0/24"
+  - "10.0.11.0/24"
+ids_log_dir: /var/log/suricata
+ids_alert_log: fast.log
+ids_eve_log: eve.json
+ids_eve_types:
+  - alert
+  - dns
+  - http
+  - tls
+  - ssh
+  - dhcp
+  - flow
+
+ids_rule_path: /var/lib/suricata/rules
+ids_rule_files:
+  - suricata.rules
+
+ids_app_layer_protocols:
+  http:
+    libhtp:
+      default-config:
+        personality: IDS
+        request-body-limit: "100kb"
+        response-body-limit: "100kb"
+        request-body-minimal-inspect-size: "32kb"
+        request-body-inspect-window: "4kb"
+        response-body-minimal-inspect-size: "40kb"
+        response-body-inspect-window: "16kb"
+        response-body-decompress-layer-limit: 2
+        http-body-inline: auto
+        swf-decompression:
+          enabled: false
+          type: both
+          compress-depth: "100kb"
+          decompress-depth: "100kb"
+        double-decode-path: false
+        double-decode-query: false
+  tls: {}
+  dns: {}
+  ssh: {}
+  udp: {}
+  tcp: {}
+  dnp3:
+    detection-enabled: true
+  modbus:
+    detection-enabled: true
+
+ids_update_rules: true
+ids_nfqueue_chain: SURICATA_NFQUEUE
+ids_nfqueue_num: 0
+ids_install_evebox: false
+ids_evebox_repo_trusted: true
+ids_suricata_group: suricata
+ids_evebox_config_dir: /etc/evebox
+ids_evebox_config_path: /etc/evebox/evebox.yaml
+ids_evebox_data_dir: /var/lib/evebox
+ids_evebox_host: 0.0.0.0
+ids_evebox_port: 5636
+ids_evebox_auth_required: false
+ids_evebox_tls_enabled: true
+ids_evebox_retention_days: 7
+ids_evebox_input_paths:
+  - "{{ ids_log_dir }}/{{ ids_eve_log }}"
+
+ids_active_response_enabled: false
+ids_active_response_dry_run: false
+
+ids_ap_ssh_host: "10.0.10.1"
+ids_ap_ssh_user: "root"
+ids_ap_ssh_port: 22
+ids_ap_ssh_key: "/root/.ssh/ap_response_key"
+
+ids_block_duration: 3600
+ids_min_alert_severity: 1
+ids_max_alert_severity: 2
+
+ids_vpn_subnet: "10.0.11.0/24"
+
+ids_whitelist_ips:
+  - "10.0.50.0/24"
+  - "10.0.10.50"
