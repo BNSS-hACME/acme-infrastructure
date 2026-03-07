@@ -1,0 +1,12 @@
+[Unit]
+Description=Loki logging system
+After=network.target
+
+[Service]
+User=loki
+Group=loki
+ExecStart=/usr/bin/loki -config.file=/etc/loki/loki.yaml
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

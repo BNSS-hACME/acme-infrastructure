@@ -1,0 +1,123 @@
+---
+- name: Install requirements for loki
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - wget
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Ensure APT Keyring directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Grafana GPG key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /tmp/grafana.gpg.key
+    mode: "0644"
+
+- name: Dearmor Grafana GPG key
+  ansible.builtin.shell:
+    cmd: gpg --dearmor < /tmp/grafana.gpg.key > /etc/apt/keyrings/grafana.gpg
+    creates: /etc/apt/keyrings/grafana.gpg
+
+- name: Add Grafana APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+    filename: grafana
+    state: present
+    update_cache: true
+
+- name: Install Loki and Grafana
+  ansible.builtin.apt:
+    name:
+      - loki
+      - grafana
+    state: present
+    update_cache: true
+
+- name: Copy loki config
+  ansible.builtin.template:
+    src: loki.yaml.j2
+    dest: /etc/loki/loki-config.yaml
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Copy loki service
+  ansible.builtin.template:
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart loki
+
+- name: Ensure Loki is enabled and started
+  ansible.builtin.systemd:
+    name: loki
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable and start Grafana service
+  ansible.builtin.systemd:
+    name: grafana-server
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Create Grafana provisioning directory
+  ansible.builtin.file:
+    path: /etc/grafana/provisioning
+    state: directory
+    mode: "0755"
+    owner: grafana
+    group: grafana
+  loop:
+    - /etc/grafana/provisioning/datasources
+    - /etc/grafana/provisioning/dashboards
+
+- name: Create Grafana provisioning directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0755"
+  loop:
+    - /etc/grafana/provisioning/datasources
+    - /etc/grafana/provisioning/dashboards
+
+- name: Deploy Loki datasource
+  ansible.builtin.template:
+    src: loki-datasource.yaml.j2
+    dest: /etc/grafana/provisioning/datasources/loki.yaml
+    owner: grafana
+    group: grafana
+    mode: "0640"
+  notify: Restart Grafana
+
+- name: Deploy dashboard provider config
+  ansible.builtin.template:
+    src: dashboard-provider.yaml.j2
+    dest: /etc/grafana/provisioning/dashboards/provider.yaml
+    owner: grafana
+    group: grafana
+    mode: "0640"
+  notify: Restart Grafana
+
+- name: Deploy dashboard JSON files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /var/lib/grafana/dashboards/
+    owner: grafana
+    group: grafana
+    mode: "0640"
+  with_fileglob:
+    - "files/dashboards/*.json"
+  notify: Restart Grafana

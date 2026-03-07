@@ -5,13 +5,13 @@
     state: directory
     owner: vagrant
     group: vagrant
-    mode: '0755'
+    mode: "0755"
 
 - name: Create temporary step password file
   ansible.builtin.copy:
     content: "{{ step_ca_password }}"
     dest: "/tmp/step_pass.txt"
-    mode: '0600'
+    mode: "0600"
 
 - name: Generate client certificate
   ansible.builtin.command: >
@@ -32,14 +32,14 @@
     path: "{{ wifi_cert_cert_dir }}/{{ cert_name }}.crt"
     owner: root
     group: freerad
-    mode: '0640'
+    mode: "0640"
 
 - name: Set permissions on private key
   ansible.builtin.file:
     path: "{{ wifi_cert_cert_dir }}/{{ cert_name }}.key"
     owner: root
     group: freerad
-    mode: '0640'
+    mode: "0640"
 
 - name: Export PKCS12 bundle
   ansible.builtin.command: >
@@ -57,7 +57,7 @@
     path: "{{ wifi_cert_export_dir }}/{{ cert_name }}.p12"
     owner: vagrant
     group: vagrant
-    mode: '0644'
+    mode: "0644"
 
 - name: Fetch PKCS12 to control machine Downloads
   ansible.builtin.fetch:
@@ -68,5 +68,5 @@
 - name: Fetch Root CA to control machine Downloads
   ansible.builtin.fetch:
     src: "/etc/step-ca/certs/root_ca.crt"
-    dest: "{{ lookup('env','HOME') }}/Downloads/"
+    dest: "{{ lookup('env', 'HOME') }}/Downloads/"
     flat: true
