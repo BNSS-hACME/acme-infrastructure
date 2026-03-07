@@ -11,6 +11,7 @@ ids_home_nets:
 ids_log_dir: /var/log/suricata
 ids_alert_log: fast.log
 ids_eve_log: eve.json
+ids_eve_log_filemode: "644"
 ids_eve_types:
   - alert
   - dns
@@ -32,6 +33,8 @@ ids_rule_disable_patterns:
   - "group:emerging-p2p"
   - "group:emerging-policy"
   - "re:^ET INFO "
+  - "re:^alert dnp3 "
+  - "re:^alert modbus "
 ids_rule_drop_patterns:
   - "group:emerging-scan"
   - "group:emerging-policy"
@@ -81,7 +84,7 @@ ids_evebox_data_dir: /var/lib/evebox
 ids_evebox_host: 0.0.0.0
 ids_evebox_port: 5636
 ids_evebox_auth_required: false
-ids_evebox_tls_enabled: true
+ids_evebox_tls_enabled: false
 ids_evebox_retention_days: 7
 ids_evebox_input_paths:
   - "{{ ids_log_dir }}/{{ ids_eve_log }}"

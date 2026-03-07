@@ -46,13 +46,17 @@
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
-    owner: root
-    group: root
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
     mode: "{{ item.mode }}"
   loop:
     - path: "{{ ids_log_dir }}"
+      owner: root
+      group: root
       mode: "0755"
     - path: "{{ ids_rule_path }}"
+      owner: root
+      group: root
       mode: "0755"
 
 - name: Ensure Suricata rule files exist for first run validation
@@ -212,7 +216,13 @@
     group: root
     mode: "0644"
     content: |
-      EVEBOX_OPTS="-c {{ ids_evebox_config_path }} --host {{ ids_evebox_host }} --port {{ ids_evebox_port }}"
+      EVEBOX_OPTS="--host {{ ids_evebox_host }} --port {{ ids_evebox_port }}
+      {%- if not ids_evebox_auth_required %} --no-auth{% endif %}
+      {%- if not ids_evebox_tls_enabled %} --no-tls{% endif %}
+      {%- for path in ids_evebox_input_paths %} --input {{ path }}{% endfor %}"
+      EVEBOX_AUTHENTICATION_REQUIRED={{ 'true' if ids_evebox_auth_required else 'false' }}
+      EVEBOX_HTTP_TLS_ENABLED={{ 'true' if ids_evebox_tls_enabled else 'false' }}
+
   when: ids_install_evebox | bool
   notify: Restart EveBox
 

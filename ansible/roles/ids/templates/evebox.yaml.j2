@@ -17,8 +17,9 @@ input:
 http:
   tls:
     enabled: {{ 'true' if ids_evebox_tls_enabled else 'false' }}
-  authentication:
-    required: {{ 'true' if ids_evebox_auth_required else 'false' }}
+
+authentication:
+  required: {{ 'true' if ids_evebox_auth_required else 'false' }}
 
 retention:
   days: {{ ids_evebox_retention_days }}
