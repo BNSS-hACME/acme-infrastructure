@@ -69,6 +69,15 @@
     force: false
   loop: "{{ ids_rule_files }}"
 
+- name: Deploy custom Suricata rules
+  ansible.builtin.template:
+    src: local.rules.j2
+    dest: "{{ ids_rule_path }}/local.rules"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart IDS
+
 - name: Deploy Suricata threshold config
   ansible.builtin.template:
     src: suricata-threshold.conf.j2

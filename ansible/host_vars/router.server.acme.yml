@@ -4,9 +4,10 @@ ids_interfaces:
   - enp0s9
   - enp0s10
 ids_home_nets:
-  - "10.0.10.0/24"
   - "10.0.50.0/24"
   - "10.0.11.0/24"
 ids_install_evebox: true
 ids_evebox_host: 0.0.0.0
 ids_mode: ids
+ids_custom_rules:
+  - 'alert tcp $EXTERNAL_NET any -> $HOME_NET [80,443,22] (msg:"LOCAL SYN Flood inbound - Potential DDoS"; flags:S; threshold: type both, track by_dst, count 400, seconds 5; classtype:attempted-dos; sid:1000005; rev:2;)'
