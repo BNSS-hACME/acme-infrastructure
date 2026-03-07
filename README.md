@@ -4,7 +4,7 @@ Infrastructure-as-code for an academic network security lab. Provisions a set of
 
 ## Overview
 
-This project is part of a course on network security and implements a full IAM and PKI stack using open-source tools: [Step CA](https://smallstep.com/docs/step-ca/) for certificate management, [Keycloak](https://www.keycloak.org/) for OIDC identity, and [FreeRADIUS](https://freeradius.org/) for network authentication. Supporting services include OpenVPN, Nextcloud, an Apache HTTPS front-end, and an AI service — all running as VMs provisioned by Vagrant and configured by Ansible. Two Raspberry Pis provide physical WAN/LAN routing at each deployment site.
+This project is part of a course on network security and implements a full IAM and PKI stack using open-source tools: [Step CA](https://smallstep.com/docs/step-ca/) for certificate management, [Keycloak](https://www.keycloak.org/) for OIDC identity, [Suricata](https://suricata.io) for IDS and IPS, and [FreeRADIUS](https://freeradius.org/) for network authentication. Supporting services include OpenVPN, Nextcloud, an Apache HTTPS front-end, and an AI service — all running as VMs provisioned by Vagrant and configured by Ansible. Two Raspberry Pis provide physical WAN/LAN routing at each deployment site. Additionally, [DVWA](https://github.com/digininja/DVWA) is deployed as a vulnerable web application for comparing the performance between [ModSecurity](https://github.com/ModSecurity/ModSecurity) and with LLM-based log analysis.
 
 ## Architecture
 
@@ -40,21 +40,21 @@ In Stockholm, the internal VM subnet is `10.0.50.0/24`. The Raspberry Pi at each
 
 | Service               | Host               | IP                     | Description                               |
 | --------------------- | ------------------ | ---------------------- | ----------------------------------------- |
-| Router                | router.server.acme | 10.0.10.50 / 10.0.50.1 | NAT gateway, bridges physical and VM LANs |
+| Router                | router.server.acme | 10.0.10.50 / 10.0.50.1 | NAT gateway, bridges physical, IDS/IPS and VM LANs |
 | DNS                   | dns.server.acme    | 10.0.50.10             | Unbound DNS resolver                      |
 | VPN                   | vpn.server.acme    | 10.0.50.11             | OpenVPN server                            |
 | Cloud Storage         | cloud.server.acme  | 10.0.50.12             | Nextcloud with OIDC integration           |
 | Certificate Authority | auth.server.acme   | 10.0.50.13             | Step CA, Keycloak OIDC, FreeRADIUS        |
 | AI                    | ai.server.acme     | 10.0.50.14             | AI service deployment                     |
 | Secure Web            | secure.server.acme | 10.0.50.20             | Apache HTTPS with OIDC authentication     |
-| DVWA                  | dvwa.server.acme   | 10.0.50.50             | Damn Vulnerable Web App (lab environment) |
+| DVWA                  | dvwa.server.acme   | 10.0.50.50             | Damn Vulnerable Web App (lab environment), ModSecurity |
 
 ### Physical Devices
 
 | Device             | Host             | LAN IP       | Description                                              |
 | ------------------ | ---------------- | ------------ | -------------------------------------------------------- |
-| RPi 1              | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the Stockholm physical router |
-| RPi 2              | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the London physical router    |
+| RPi 1              | rpi1.server.acme | 192.168.50.1 | WAN/LAN router in front of the Stockholm physical router IDS/IPS |
+| RPi 2              | rpi2.server.acme | 192.168.50.1 | WAN/LAN router in front of the London physical router,  IDS/IPS   |
 | ASUS AC1900 Router | acme-stockholm   | 10.0.10.1    | Router and AP for Stockholm site                         |
 | ASUS AC1900 Router | acme-london      | 10.0.20.1    | Router and AP for London site                            |
 
@@ -174,7 +174,7 @@ All other configuration is within variables inside the `ansible` directory. All 
 - [Ollama](https://ollama.com/) — Local AI service
 - [DVWA](https://github.com/digininja/DVWA) — Damn Vulnerable Web Application
 - [Ansible](https://docs.ansible.com/) — Configuration management
-- [Solitara](https://suricata.io) - Intrution Detection
+- [Suricata](https://suricata.io) - Intrution Detection
 - [ModSecurity](https://modsecurity.org) - ModSecurity
 
 ## License
