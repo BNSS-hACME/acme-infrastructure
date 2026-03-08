@@ -113,5 +113,3 @@
     group: freerad
     mode: "0640"
   notify: Restart FreeRADIUS
-
-
