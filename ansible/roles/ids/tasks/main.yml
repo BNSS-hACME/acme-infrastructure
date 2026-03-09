@@ -111,6 +111,25 @@
       {% endif %}
   notify: Restart IDS
 
+- name: Create Suricata systemd override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/suricata.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy Suricata systemd override
+  ansible.builtin.template:
+    src: suricata-override.conf.j2
+    dest: /etc/systemd/system/suricata.service.d/override.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart IDS
+
 - name: Deploy Suricata rule update config
   ansible.builtin.template:
     src: suricata-update.yaml.j2
@@ -275,26 +294,28 @@
   environment:
     DEBIAN_FRONTEND: noninteractive
 
-- name: Allow established/related before NFQUEUE
-  ansible.builtin.iptables:
-    chain: INPUT
-    ctstate: ESTABLISHED,RELATED
-    jump: ACCEPT
-    action: insert
-    comment: "Allow established before Suricata NFQUEUE"
-  when: ids_mode_normalized == 'ips'
-  notify: Save iptables rules
+# - name: Allow established/related before NFQUEUE
+#   ansible.builtin.iptables:
+#     chain: INPUT
+#     ctstate: ESTABLISHED,RELATED
+#     jump: ACCEPT
+#     action: insert
+#     rule_num: "1"
+#     comment: "Allow established before Suricata NFQUEUE"
+#   when: ids_mode_normalized == 'ips'
+#   notify: Save iptables rules
 
-- name: Allow SSH before NFQUEUE (keep provisioning alive)
-  ansible.builtin.iptables:
-    chain: INPUT
-    protocol: tcp
-    destination_port: "22"
-    jump: ACCEPT
-    action: insert
-    comment: "Allow SSH before Suricata NFQUEUE"
-  when: ids_mode_normalized == 'ips'
-  notify: Save iptables rules
+# - name: Allow SSH before NFQUEUE (keep provisioning alive)
+#   ansible.builtin.iptables:
+#     chain: INPUT
+#     protocol: tcp
+#     destination_port: "22"
+#     jump: ACCEPT
+#     action: insert
+#     rule_num: "2"
+#     comment: "Allow SSH before Suricata NFQUEUE"
+#   when: ids_mode_normalized == 'ips'
+#   notify: Save iptables rules
 
 - name: Ensure Suricata NFQUEUE chain exists (IPS inline)
   ansible.builtin.iptables:
@@ -322,14 +343,15 @@
   when: ids_mode_normalized == 'ips'
   notify: Save iptables rules
 
-- name: Add Suricata chain jump for INPUT chain (IPS inline)
-  ansible.builtin.iptables:
-    chain: INPUT
-    jump: "{{ ids_nfqueue_chain }}"
-    action: insert
-    comment: "Suricata IPS inline inspection"
-  when: ids_mode_normalized == 'ips'
-  notify: Save iptables rules
+# - name: Add Suricata chain jump for INPUT chain (IPS inline)
+#   ansible.builtin.iptables:
+#     chain: INPUT
+#     jump: "{{ ids_nfqueue_chain }}"
+#     action: insert
+#     rule_num: "3"
+#     comment: "Suricata IPS inline inspection"
+#   when: ids_mode_normalized == 'ips'
+#   notify: Save iptables rules
 
 - name: Remove Suricata chain jump rules when in IDS mode
   ansible.builtin.iptables:

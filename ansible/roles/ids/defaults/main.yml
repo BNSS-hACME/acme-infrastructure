@@ -1,5 +1,5 @@
 ids_interface: "{{ ansible_default_ipv4.interface | default(ansible_facts['interfaces'] | reject('equalto', 'lo') | first | default('enp0s8')) }}"
-ids_interfaces: "{{ansible_facts['interfaces'] | reject('equalto', 'lo') | list }}"
+ids_interfaces: "{{ ansible_facts['interfaces'] | reject('equalto', 'lo') | list }}"
 ids_mode: ips
 ids_home_net: "10.0.50.0/24"
 ids_home_nets:
