@@ -1,0 +1,16 @@
+[Unit]
+Description=Suricata Active Response – auto-block attackers
+Documentation=https://docs.suricata.io/
+After=suricata.service
+Requires=suricata.service
+
+[Service]
+Type=simple
+ExecStart=/opt/ids/active-response.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

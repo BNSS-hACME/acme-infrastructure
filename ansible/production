@@ -47,3 +47,6 @@ secure.server.acme
 auth.server.acme
 secure.server.acme
 cloud.server.acme
+
+[ids]
+router.server.acme
