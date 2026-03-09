@@ -1,7 +1,5 @@
----
-ids_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
-ids_interfaces:
-  - "{{ ids_interface }}"
+ids_interface: "{{ ansible_default_ipv4.interface | default(ansible['interfaces'] | reject('equalto', 'lo') | first | default('enp0s8')) }}"
+ids_interfaces: "{{ ansible['interfaces'] | reject('equalto', 'lo') | list }}"
 ids_mode: ips
 ids_home_net: "10.0.50.0/24"
 ids_home_nets:
@@ -26,11 +24,11 @@ ids_rule_files:
   - local.rules
 ids_custom_rules:
   - >-
-    alert http $EXTERNAL_NET any -> $HOME_NET any
-    (msg:"Possible HTTP Flood detected";
-    flow:established,to_server;
+    alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS
+    (msg:"Possible HTTP/TCP Flood detected";
+    flow:stateless;
     threshold:type both, track by_src, count 100, seconds 5;
-    classtype:attempted-dos; sid:1000001; rev:1;)
+    classtype:attempted-dos; sid:1000001; rev:2;)
 ids_rule_sources:
   - et/open
 ids_rule_enable_patterns: []
