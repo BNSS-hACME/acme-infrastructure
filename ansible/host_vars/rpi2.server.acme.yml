@@ -1,0 +1,7 @@
+---
+ansible_host: "rpi2-hacme.mooo.com"
+raspberrypi_static_dhcp_hosts:
+  - { mac: "3c:7c:3f:e7:dc:c1", ip: "192.168.50.101", name: "router" }
+raspberrypi_port_forwards:
+  - { proto: udp, port: 1194, dest: "192.168.50.101" }
+  - { proto: udp, port: 51820, dest: "192.168.50.101" }

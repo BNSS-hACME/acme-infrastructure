@@ -1,0 +1,14 @@
+---
+# Configures Raspberry Pis as WAN/LAN pass-through routers
+#
+# Topology:
+#   ISP --- [eth0 DHCP] Pi [eth1 static 192.168.50.1] --- Router (gets 192.168.50.x via DHCP)
+#
+# NOTE: After this runs, the Pi's reachable address on your management network
+# will change if you were managing it via the same NIC. Plan connectivity accordingly.
+
+- name: Configure Raspberry Pi as WAN/LAN router
+  hosts: raspberrypi
+  become: true
+  roles:
+    - raspberrypi
