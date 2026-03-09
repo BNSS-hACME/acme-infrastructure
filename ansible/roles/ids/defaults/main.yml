@@ -1,5 +1,5 @@
-ids_interface: "{{ ansible_default_ipv4.interface | default(ansible['interfaces'] | reject('equalto', 'lo') | first | default('enp0s8')) }}"
-ids_interfaces: "{{ ansible['interfaces'] | reject('equalto', 'lo') | list }}"
+ids_interface: "{{ ansible_default_ipv4.interface | default(ansible_facts['interfaces'] | reject('equalto', 'lo') | first | default('enp0s8')) }}"
+ids_interfaces: "{{ansible_facts['interfaces'] | reject('equalto', 'lo') | list }}"
 ids_mode: ips
 ids_home_net: "10.0.50.0/24"
 ids_home_nets:
@@ -9,11 +9,12 @@ ids_log_dir: /var/log/suricata
 ids_alert_log: fast.log
 ids_eve_log: eve.json
 ids_eve_log_filemode: "644"
-ids_eve_log_http: false
+ids_eve_log_http: true
 ids_eve_types:
   - alert
   - dns
   - tls
+  - http
   - flow
   - drop
   - files
@@ -29,6 +30,10 @@ ids_custom_rules:
     flow:stateless;
     threshold:type both, track by_src, count 100, seconds 5;
     classtype:attempted-dos; sid:1000001; rev:2;)
+  - >-
+    drop icmp any any -> any any
+    (msg:"Test IPS Drop Rule - ICMP Blocked";
+     sid:9999999; rev:1;)
 ids_rule_sources:
   - et/open
 ids_rule_enable_patterns: []
@@ -71,8 +76,8 @@ ids_app_layer_protocols:
           type: both
           compress-depth: "100kb"
           decompress-depth: "100kb"
-        double-decode-path: false
-        double-decode-query: false
+        double-decode-path: true
+        double-decode-query: true
   tls: {}
   ssh: {}
   udp: {}
