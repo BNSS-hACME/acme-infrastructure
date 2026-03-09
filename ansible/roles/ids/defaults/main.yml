@@ -2,7 +2,7 @@
 ids_interface: "{{ ansible_default_ipv4.interface | default('eth0') }}"
 ids_interfaces:
   - "{{ ids_interface }}"
-ids_mode: ids
+ids_mode: ips
 ids_home_net: "10.0.50.0/24"
 ids_home_nets:
   - "{{ ids_home_net }}"
@@ -11,11 +11,11 @@ ids_log_dir: /var/log/suricata
 ids_alert_log: fast.log
 ids_eve_log: eve.json
 ids_eve_log_filemode: "644"
+ids_eve_log_http: false
 ids_eve_types:
   - alert
   - dns
   - tls
-  - http
   - flow
   - drop
   - files
@@ -24,7 +24,13 @@ ids_rule_path: /var/lib/suricata/rules
 ids_rule_files:
   - suricata.rules
   - local.rules
-ids_custom_rules: []
+ids_custom_rules:
+  - >-
+    alert http $EXTERNAL_NET any -> $HOME_NET any
+    (msg:"Possible HTTP Flood detected";
+    flow:established,to_server;
+    threshold:type both, track by_src, count 100, seconds 5;
+    classtype:attempted-dos; sid:1000001; rev:1;)
 ids_rule_sources:
   - et/open
 ids_rule_enable_patterns: []
@@ -76,7 +82,7 @@ ids_app_layer_protocols:
 
 ids_update_rules: true
 ids_nfqueue_chain: SURICATA_NFQUEUE
-ids_install_evebox: false
+ids_install_evebox: true
 ids_evebox_repo_trusted: true
 ids_suricata_group: suricata
 ids_evebox_config_dir: /etc/evebox

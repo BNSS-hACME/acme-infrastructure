@@ -272,7 +272,6 @@
     state: present
   environment:
     DEBIAN_FRONTEND: noninteractive
-  when: ids_mode_normalized == 'ips'
 
 - name: Allow established/related before NFQUEUE
   ansible.builtin.iptables:
@@ -365,6 +364,8 @@
   ansible.builtin.apt:
     name: jq
     state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
   when: ids_active_response_enabled
 
 - name: Create active response directories

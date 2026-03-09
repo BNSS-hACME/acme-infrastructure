@@ -80,11 +80,14 @@ outputs:
       community-id: true
       filename: {{ ids_eve_log }}
       types:
-{% for eve_type in ids_eve_types %}
-{% if eve_type == 'http' %}
+{% if ids_eve_log_http | default(false) | bool %}
         - http:
             extended: yes
             dump-all-headers: both
+{% endif %}
+{% for eve_type in ids_eve_types %}
+{% if eve_type == 'http' %}
+{# Managed by ids_eve_log_http #}
 {% elif eve_type == 'alert' %}
         - alert:
             payload: yes
