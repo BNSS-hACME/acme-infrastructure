@@ -1,0 +1,48 @@
+{% if 'router' in group_names %}
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s 10.0.50.0/24 -o {{ ext_if | default('enp0s8') }} -j MASQUERADE
+COMMIT
+{% endif %}
+
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+
+-A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -p icmp -m comment --comment "Allow Ping" -j ACCEPT
+-A INPUT -p tcp --dport 22 -m comment --comment "Allow SSH globally" -j ACCEPT
+
+{% if 'router' in group_names %}
+-A FORWARD -i {{ int_if | default('enp0s9') }} -o {{ ext_if | default('enp0s8') }} -j ACCEPT
+-A FORWARD -i {{ ext_if | default('enp0s8') }} -o {{ int_if | default('enp0s9') }} -m state --state RELATED,ESTABLISHED -j ACCEPT
+{% endif %}
+
+{% if (firewall | default({}))['ports'] is defined %}
+{% for port in firewall.ports %}
+{% if (firewall | default({}))['allowed_subnets'] is defined %}
+{% for subnet in firewall.allowed_subnets %}
+-A INPUT -p tcp --dport {{ port }} -s {{ subnet }} -m comment --comment "Allow TCP {{ port }} from {{ subnet }}" -j ACCEPT
+-A INPUT -p udp --dport {{ port }} -s {{ subnet }} -m comment --comment "Allow UDP {{ port }} from {{ subnet }}" -j ACCEPT
+{% endfor %}
+{% else %}
+-A INPUT -p tcp --dport {{ port }} -m comment --comment "Allow TCP {{ port }} globally" -j ACCEPT
+-A INPUT -p udp --dport {{ port }} -m comment --comment "Allow UDP {{ port }} globally" -j ACCEPT
+{% endif %}
+{% endfor %}
+{% else %}
+{% if (firewall | default({}))['allowed_subnets'] is defined %}
+{% for subnet in firewall.allowed_subnets %}
+-A INPUT -s {{ subnet }} -m comment --comment "Allow ALL from {{ subnet }}" -j ACCEPT
+{% endfor %}
+{% else %}
+-A INPUT -m comment --comment "Allow ALL globally (Insecure Fallback)" -j ACCEPT
+{% endif %}
+{% endif %}
+
+COMMIT

@@ -2,7 +2,10 @@
 firewall:
   ports:
     - 8443
-    # - 9000
+    - 9000
+    - 1812
+    - 1813
+
   allowed_subnets:
     - 10.0.10.0/24 # Stockholm
     - 10.0.20.0/24 # London
