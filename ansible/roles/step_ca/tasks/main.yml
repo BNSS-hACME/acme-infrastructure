@@ -122,3 +122,25 @@
     name: step-ca
     enabled: true
     state: started
+
+- name: Get Step-CA root certificate fingerprint
+  ansible.builtin.command: step certificate fingerprint /etc/step-ca/certs/root_ca.crt
+  register: step_ca_fingerprint
+
+- name: Wait for Step CA API to be reachable
+  ansible.builtin.uri:
+    url: https://auth.server.acme:9000/health
+    method: GET
+    validate_certs: false
+  register: step_ca_health
+  retries: 10
+  delay: 3
+  until: step_ca_health.status == 200
+
+- name: Bootstrap Step CLI for local CA access
+  ansible.builtin.command: >
+    step ca bootstrap
+    --ca-url https://auth.server.acme:9000
+    --fingerprint {{ step_ca_fingerprint.stdout }}
+  args:
+    creates: /root/.step/config/defaults.json
