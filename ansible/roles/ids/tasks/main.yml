@@ -91,6 +91,8 @@
   ansible.builtin.template:
     src: suricata.yaml.j2
     dest: /etc/suricata/suricata.yaml
+    owner: root
+    group: root
     mode: "0644"
     validate: "suricata -T -c %s"
   notify: Restart IDS

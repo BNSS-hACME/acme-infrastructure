@@ -17,7 +17,9 @@ VPN_SUBNET="{{ ids_vpn_subnet }}"
 DRY_RUN="{{ ids_active_response_dry_run | lower }}"
 EVE_LOG="{{ ids_log_dir }}/{{ ids_eve_log }}"
 LOG_FILE="/var/log/ids/active-response.log"
-BLOCK_LIST="/var/run/ids/blocked-ips.txt"
+BLOCK_LIST="/var/lib/ids/blocked-ips.txt"
+mkdir -p "$(dirname "$BLOCK_LIST")"
+touch "$BLOCK_LIST"
 
 # Whitelist (CIDR or single IPs)
 WHITELIST=(
