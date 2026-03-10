@@ -1,6 +1,6 @@
 ---
 - name: Deploy LLM pipeline
-  hosts: dvwa
+  hosts: router.server.acme
   become: true
   roles:
     - llm_pipeline

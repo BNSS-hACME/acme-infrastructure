@@ -6,6 +6,7 @@ llm_pipeline_model_name: "meta/llama-3.1-8b-instruct"
 llm_pipeline_api_base_url: "https://integrate.api.nvidia.com/v1"
 llm_pipeline_cron_minute: "*/5"
 llm_pipeline_cron_user: "root"
+llm_pipeline_ids_log: false
 llm_pipeline_nice: !vault |
   $ANSIBLE_VAULT;1.1;AES256
   66363033643366333965333135356131643934396435616661366534303433643862393465666336

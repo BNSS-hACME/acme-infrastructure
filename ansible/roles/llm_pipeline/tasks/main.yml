@@ -69,5 +69,6 @@
       --base-url {{ llm_pipeline_api_base_url }}
       --alert-file {{ llm_pipeline_alert_file }}
       --prompt-file {{ llm_pipeline_prompt_file }}
+      {{"--ids-log" if llm_pipeline_ids_log else ""}}
     user: "{{ llm_pipeline_cron_user }}"
     state: present

@@ -34,3 +34,6 @@ ids_rule_enable_patterns:
   - "group:emerging-dos"
 ids_rule_drop_patterns:
   - "group:emerging-dos"
+
+llm_pipeline_ids_log: true
+llm_pipeline_log_file: "/var/log/suricata/eve.json" 

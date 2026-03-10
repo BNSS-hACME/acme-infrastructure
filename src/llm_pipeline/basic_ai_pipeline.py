@@ -53,7 +53,7 @@ def pseudonymize_logs(log_text):
     def _replace_cred(match):
         key = match.group(1)
         val = match.group(2)
-        
+
         # Don't hash if it looks like a SQL literal or very short string
         if len(val) < 3 or val.lower() in ("username", "password", "users"):
             return match.group(0)
@@ -63,7 +63,7 @@ def pseudonymize_logs(log_text):
             h = hashlib.sha256(val.encode()).hexdigest()[:12]
             label = "user" if "user" in key.lower() else "pass"
             cred_map[val] = f"{label}_{h}"
-        
+
         return f"{key}={cred_map[val]}" if "=" in match.group(0) else f"{key}: {cred_map[val]}"
 
     sanitized = _IP_PATTERN.sub(_replace_ip, log_text)
@@ -73,7 +73,7 @@ def pseudonymize_logs(log_text):
     # Combine maps for depseudonymization
     full_reverse_map = {fake: real for real, fake in ip_map.items()}
     full_reverse_map.update({fake: real for real, fake in cred_map.items()})
-    
+
     return sanitized, full_reverse_map
 
 
@@ -132,7 +132,7 @@ def extract_json_from_code_block(text):
     match = re.search(r"```(?:json)?\s*\r?\n?(.*?)\r?\n?```", text, re.DOTALL)
     if match:
         text = match.group(1).strip()
-    
+
     match2 = re.search(r"(\{.*\})", text, re.DOTALL)
     if match2:
         return match2.group(1).strip()
@@ -165,7 +165,7 @@ def analyze_logs_with_llm(log_chunk, prompt_template, client):
             if not result_text:
                 print("Error: Received an empty response from the LLM.", file=sys.stderr)
                 return None
-            
+
             # Try to extract JSON from code blocks if present
             extracted_json = extract_json_from_code_block(result_text)
             return json.loads(extracted_json)
@@ -277,22 +277,22 @@ def attach_unique_ids(findings, uid_list):
     for finding in findings:
         evidence_list = finding.get("evidence", [])
         matched_uids = set()
-        
+
         for evidence_fragment in evidence_list:
             fragment = evidence_fragment.strip()
             if not fragment:
                 continue
-            
+
             direct_match = _UNIQUE_ID_PATTERN.search(fragment)
             if direct_match:
                 matched_uids.add(direct_match.group(1))
                 continue
-            
+
             for log_line, uid in uid_list:
                 if fragment in log_line or log_line in fragment:
                     matched_uids.add(uid)
-                    break  
-        
+                    break
+
         if matched_uids:
             finding["unique_ids"] = sorted(matched_uids)
     return findings
@@ -378,6 +378,8 @@ def read_new_lines(log_file, cursor_file):
 
     text = new_data.decode("utf-8", errors="replace").strip()
     return text
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze server logs using an OpenAI-compatible API.")
     parser.add_argument("--log-file", help="Path to a log file",
@@ -394,15 +396,16 @@ def parse_args():
     parser.add_argument("--cursor-file", default=None, help="File to store log read state/cursor")
     parser.add_argument("--pseudonymize", action="store_true",
                         help="Anonymize IPs and hostnames before sending to the LLM")
+    parser.add_argument("--ids-log", action="store_true", help="Disable uid search for eve.json")
     return parser.parse_args()
 
 
 def resolve_provider_settings(args):
     api_key = args.api_key
-    
+
     if not api_key:
         api_key = os.environ.get("LLM_PIPELINE_API_KEY") or os.environ.get("OPENAI_API_KEY")
-        
+
     if not api_key:
         config_path = Path("/etc/llm_pipeline/api_key")
         if config_path.exists():
@@ -417,7 +420,7 @@ def resolve_provider_settings(args):
         return base_url, api_key
 
     base_url = args.base_url or "https://integrate.api.nvidia.com/v1"
-        
+
     if not api_key:
         raise ValueError(
             "An API key is required for provider 'external'. "
@@ -484,7 +487,7 @@ def main():
     print("\n--- LLM Analysis Result ---")
     print(json.dumps(validated, indent=2, ensure_ascii=False))
 
-    if not args.sample and not args.stdin and args.log_file:
+    if not args.sample and not args.stdin and not args.ids_log and args.log_file:
         uid_list = extract_unique_ids(log_chunk)
         validated["findings"] = attach_unique_ids(validated["findings"], uid_list)
 
