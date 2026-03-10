@@ -261,9 +261,9 @@
 - name: Create EveBox user non-interactive
   ansible.builtin.command:
     cmd: evebox config users -D {{ ids_evebox_data_dir }} add --username {{ ids_evebox_user }} --password "{{ ids_evebox_password }}"
-  register: _evebox_user_add
-  changed_when: _evebox_user_add.rc == 0
-  failed_when: _evebox_user_add.rc != 0 and 'UNIQUE constraint failed' not in _evebox_user_add.stderr
+  register: ids_evebox_user_add
+  changed_when: ids_evebox_user_add.rc == 0
+  failed_when: ids_evebox_user_add.rc != 0 and 'UNIQUE constraint failed' not in ids_evebox_user_add.stderr
   when: ids_install_evebox and ids_evebox_auth_required | bool
   notify: Restart EveBox
 
