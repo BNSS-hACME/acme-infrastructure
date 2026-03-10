@@ -78,10 +78,7 @@ ids_app_layer_protocols:
           decompress-depth: "100kb"
         double-decode-path: true
         double-decode-query: true
-  tls: {}
   ssh: {}
-  udp: {}
-  tcp: {}
 
 ids_update_rules: true
 ids_nfqueue_chain: SURICATA_NFQUEUE
