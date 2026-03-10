@@ -1,6 +1,6 @@
 ids_interface: "{{ ansible_default_ipv4.interface | default(ansible_facts['interfaces'] | reject('equalto', 'lo') | first | default('enp0s8')) }}"
 ids_interfaces: "{{ ansible_facts['interfaces'] | reject('equalto', 'lo') | list }}"
-ids_mode: ips
+ids_mode: ids
 ids_home_net: "10.0.50.0/24"
 ids_home_nets:
   - "{{ ids_home_net }}"
@@ -17,7 +17,6 @@ ids_eve_types:
   - http
   - flow
   - drop
-  - files
 
 ids_rule_path: /var/lib/suricata/rules
 ids_rule_files:
@@ -30,14 +29,15 @@ ids_custom_rules:
     flow:stateless;
     threshold:type both, track by_src, count 100, seconds 5;
     classtype:attempted-dos; sid:1000001; rev:2;)
-  - >-
-    drop icmp any any -> any any
-    (msg:"Test IPS Drop Rule - ICMP Blocked";
-     sid:9999999; rev:1;)
+  # - >-
+  #   drop icmp any any -> any any
+  #   (msg:"Test IPS Drop Rule - ICMP Blocked";
+  #   sid:9999999; rev:1;)
 ids_rule_sources:
   - et/open
 ids_rule_enable_patterns: []
 ids_rule_disable_patterns:
+  - "2231000"
   - "group:emerging-chat"
   - "group:emerging-games"
   - "group:emerging-p2p"
@@ -93,7 +93,7 @@ ids_evebox_config_path: /etc/evebox/evebox.yaml
 ids_evebox_data_dir: /var/lib/evebox
 ids_evebox_host: 0.0.0.0
 ids_evebox_port: 5636
-ids_evebox_auth_required: false
+ids_evebox_auth_required: true
 ids_evebox_tls_enabled: false
 ids_evebox_retention_days: 7
 ids_evebox_input_paths:

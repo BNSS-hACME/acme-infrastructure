@@ -118,6 +118,7 @@
     owner: root
     group: root
     mode: "0755"
+  when: ids_mode_normalized == 'ips'
 
 - name: Deploy Suricata systemd override
   ansible.builtin.template:
@@ -129,6 +130,7 @@
   notify:
     - Reload systemd
     - Restart IDS
+  when: ids_mode_normalized == 'ips'
 
 - name: Deploy Suricata rule update config
   ansible.builtin.template:
@@ -256,6 +258,23 @@
   when: ids_install_evebox | bool
   notify: Restart EveBox
 
+- name: Create EveBox user non-interactive
+  ansible.builtin.command:
+    cmd: evebox config users -D {{ ids_evebox_data_dir }} add --username {{ ids_evebox_user }} --password "{{ ids_evebox_password }}"
+  register: _evebox_user_add
+  changed_when: _evebox_user_add.rc == 0
+  failed_when: _evebox_user_add.rc != 0 and 'UNIQUE constraint failed' not in _evebox_user_add.stderr
+  when: ids_install_evebox and ids_evebox_auth_required | bool
+  notify: Restart EveBox
+
+- name: Ensure EveBox configuration database has correct permissions
+  ansible.builtin.file:
+    path: "{{ ids_evebox_data_dir }}/config.sqlite"
+    owner: evebox
+    group: evebox
+    mode: "0640"
+  when: ids_install_evebox and ids_evebox_auth_required | bool
+
 - name: Ensure Suricata group exists for EveBox access
   ansible.builtin.group:
     name: "{{ ids_suricata_group }}"
@@ -284,6 +303,15 @@
     enabled: true
   when: ids_install_evebox | bool
 
+- name: Create EveBox user non-interactive
+  ansible.builtin.command:
+    cmd: evebox config users -D {{ ids_evebox_data_dir }} add --username {{ ids_evebox_user }} --password "{{ ids_evebox_password }}"
+  register: ids_evebox_user_add
+  changed_when: ids_evebox_user_add.rc == 0
+  failed_when: ids_evebox_user_add.rc != 0 and 'UNIQUE constraint failed' not in ids_evebox_user_add.stderr
+  when: ids_install_evebox and ids_evebox_auth_required | bool
+  notify: Restart EveBox
+
 - name: Flush handlers to ensure Suricata is running before applying iptables rules
   ansible.builtin.meta: flush_handlers
 
@@ -294,35 +322,12 @@
   environment:
     DEBIAN_FRONTEND: noninteractive
 
-# - name: Allow established/related before NFQUEUE
-#   ansible.builtin.iptables:
-#     chain: INPUT
-#     ctstate: ESTABLISHED,RELATED
-#     jump: ACCEPT
-#     action: insert
-#     rule_num: "1"
-#     comment: "Allow established before Suricata NFQUEUE"
-#   when: ids_mode_normalized == 'ips'
-#   notify: Save iptables rules
-
-# - name: Allow SSH before NFQUEUE (keep provisioning alive)
-#   ansible.builtin.iptables:
-#     chain: INPUT
-#     protocol: tcp
-#     destination_port: "22"
-#     jump: ACCEPT
-#     action: insert
-#     rule_num: "2"
-#     comment: "Allow SSH before Suricata NFQUEUE"
-#   when: ids_mode_normalized == 'ips'
-#   notify: Save iptables rules
-
 - name: Ensure Suricata NFQUEUE chain exists (IPS inline)
   ansible.builtin.iptables:
     chain: "{{ ids_nfqueue_chain }}"
     chain_management: true
     state: present
-  when: ids_mode_normalized == 'ips'
+  when: ids_mode_normalized == 'ips' | bool
   notify: Save iptables rules
 
 - name: Add NFQUEUE rule in Suricata chain (IPS inline)
@@ -331,7 +336,7 @@
     jump: NFQUEUE
     action: insert
     comment: "Suricata IPS inline inspection"
-  when: ids_mode_normalized == 'ips'
+  when: ids_mode_normalized == 'ips' | bool
   notify: Save iptables rules
 
 - name: Add Suricata chain jump for FORWARD chain (IPS inline)
@@ -340,18 +345,8 @@
     jump: "{{ ids_nfqueue_chain }}"
     action: insert
     comment: "Suricata IPS inline inspection"
-  when: ids_mode_normalized == 'ips'
+  when: ids_mode_normalized == 'ips' | bool
   notify: Save iptables rules
-
-# - name: Add Suricata chain jump for INPUT chain (IPS inline)
-#   ansible.builtin.iptables:
-#     chain: INPUT
-#     jump: "{{ ids_nfqueue_chain }}"
-#     action: insert
-#     rule_num: "3"
-#     comment: "Suricata IPS inline inspection"
-#   when: ids_mode_normalized == 'ips'
-#   notify: Save iptables rules
 
 - name: Remove Suricata chain jump rules when in IDS mode
   ansible.builtin.iptables:
@@ -362,7 +357,7 @@
   loop:
     - FORWARD
     - INPUT
-  when: ids_mode_normalized == 'ids'
+  when: ids_mode_normalized == 'ids' | bool
   notify: Save iptables rules
 
 - name: Remove NFQUEUE rule from Suricata chain when in IDS mode
@@ -371,7 +366,7 @@
     jump: NFQUEUE
     state: absent
     comment: "Suricata IPS inline inspection"
-  when: ids_mode_normalized == 'ids'
+  when: ids_mode_normalized == 'ids' | bool
   notify: Save iptables rules
 
 - name: Remove Suricata NFQUEUE chain when in IDS mode
@@ -379,7 +374,7 @@
     chain: "{{ ids_nfqueue_chain }}"
     chain_management: true
     state: absent
-  when: ids_mode_normalized == 'ids'
+  when: ids_mode_normalized == 'ids' | bool
   notify: Save iptables rules
 
 # ---- Active Response ----
@@ -390,7 +385,7 @@
     state: present
   environment:
     DEBIAN_FRONTEND: noninteractive
-  when: ids_active_response_enabled
+  when: ids_active_response_enabled | bool
 
 - name: Create active response directories
   ansible.builtin.file:
@@ -403,7 +398,7 @@
     - /opt/ids
     - /var/log/ids
     - /var/run/ids
-  when: ids_active_response_enabled
+  when: ids_active_response_enabled | bool
 
 - name: Deploy active response script
   ansible.builtin.template:
@@ -413,7 +408,7 @@
     group: root
     mode: "0755"
   notify: Restart active-response
-  when: ids_active_response_enabled
+  when: ids_active_response_enabled | bool
 
 - name: Deploy active response systemd service
   ansible.builtin.template:
@@ -423,7 +418,7 @@
     group: root
     mode: "0644"
   notify: Restart active-response
-  when: ids_active_response_enabled
+  when: ids_active_response_enabled | bool
 
 - name: Enable and start active response
   ansible.builtin.systemd:
@@ -431,4 +426,4 @@
     enabled: true
     state: started
     daemon_reload: true
-  when: ids_active_response_enabled
+  when: ids_active_response_enabled | bool

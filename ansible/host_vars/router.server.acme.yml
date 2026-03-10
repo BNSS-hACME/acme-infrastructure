@@ -3,7 +3,7 @@ ids_home_nets:
   - "10.0.50.0/24"
 ids_install_evebox: true
 ids_evebox_host: 0.0.0.0
-ids_mode: ips
+ids_mode: ids
 ids_custom_rules:
   - >
     alert tcp $EXTERNAL_NET any -> $HOME_NET [80,443,22]
