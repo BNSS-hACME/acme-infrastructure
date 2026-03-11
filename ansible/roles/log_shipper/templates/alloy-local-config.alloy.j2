@@ -1,0 +1,112 @@
+local.file_match "base_logs" {
+  path_targets = [
+    {__path__ = "/var/log/syslog",   job = "syslog"},
+    {__path__ = "/var/log/auth.log", job = "auth"},
+  ]
+}
+
+loki.source.file "base_files" {
+  targets    = local.file_match.base_logs.targets
+  forward_to = [loki.process.base.receiver]
+}
+
+loki.process "base" {
+  stage.static_labels {
+    values = {
+      host     = "{{ inventory_hostname }}",
+      pipeline = "base",
+    }
+  }
+  forward_to = [loki.write.loki.receiver]
+}
+
+{% if log_shipper_suricata_enabled | default(false) %}
+local.file_match "suricata_logs" {
+  path_targets = [
+    {__path__ = "/var/log/suricata/eve.json", job = "suricata-eve"},
+    {__path__ = "/var/log/suricata/fast.log", job = "suricata-fast"},
+  ]
+}
+
+loki.source.file "suricata_files" {
+  targets    = local.file_match.suricata_logs.targets
+  forward_to = [loki.process.suricata.receiver]
+}
+
+loki.process "suricata" {
+  // Parse JSON fields from eve.json into structured labels
+  stage.json {
+    expressions = {
+      event_type = "event_type",
+      severity   = "alert.severity",
+      category   = "alert.category",
+    }
+  }
+
+  stage.labels {
+    values = {
+      event_type = "",
+      severity   = "",
+      category   = "",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      host     = "{{ inventory_hostname }}",
+      pipeline = "suricata",
+    }
+  }
+
+  forward_to = [loki.write.loki.receiver]
+}
+{% endif %}
+
+{% if log_shipper_security_enabled | default(false) %}
+local.file_match "security_logs" {
+  path_targets = [
+    {__path__ = "/var/log/apache2/modsec_audit.json", job = "modsecurity"},
+    {__path__ = "{{ log_shipper_llm_log_path }}",    job = "llm-pipeline"},
+  ]
+}
+
+loki.source.file "security_files" {
+  targets    = local.file_match.security_logs.targets
+  forward_to = [loki.process.security.receiver]
+}
+
+loki.process "security" {
+  stage.json {
+    expressions = {
+      src_ip          = "src_ip",
+      severity        = "severity",
+      action          = "action",
+      response_status = "response_status",
+      unique_id       = "unique_id",
+    }
+  }
+
+  stage.labels {
+    values = {
+      src_ip          = "",
+      severity        = "",
+      action          = "",
+      response_status = "",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      host     = "{{ inventory_hostname }}",
+      pipeline = "security",
+    }
+  }
+  forward_to = [loki.write.loki.receiver]
+}
+{% endif %}
+
+loki.write "loki" {
+  endpoint {
+    url = "{{ log_shipper_loki_url }}"
+  }
+}

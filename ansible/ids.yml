@@ -2,5 +2,8 @@
 - name: Install and configure IDS
   hosts: ids
   become: true
+  vars:
+    log_shipper_suricata_enabled: true
   roles:
     - ids
+    - log_shipper

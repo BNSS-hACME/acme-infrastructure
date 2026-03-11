@@ -1,0 +1,190 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false,
+            "filterable": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "severity"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "CRITICAL": { "color": "dark-red", "index": 0, "text": "CRITICAL" },
+                      "ERROR": { "color": "red", "index": 1, "text": "ERROR" },
+                      "WARNING": { "color": "orange", "index": 2, "text": "WARNING" },
+                      "NOTICE": { "color": "blue", "index": 3, "text": "NOTICE" }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Time"
+          }
+        ]
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "{job=\"modsecurity\"} | json",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "ModSecurity Alerts Table",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "action": false,
+              "app": true,
+              "container": true,
+              "dst_ip": true,
+              "dst_port": true,
+              "filename": true,
+              "host": false,
+              "instance": true,
+              "job": true,
+              "pipeline": true,
+              "request_headers": true,
+              "response_body": true,
+              "response_protocol": true,
+              "response_status_text": true,
+              "src_port": true,
+              "stream": true,
+              "transaction_id": false
+            },
+            "indexByName": {
+              "Time": 0,
+              "src_ip": 1,
+              "request_line": 2,
+              "response_status": 3,
+              "severity": 4,
+              "messages": 5
+            },
+            "renameByName": {
+              "request_line": "Request",
+              "response_status": "Status",
+              "src_ip": "Source IP",
+              "transaction_id": "Tx ID"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": [
+    "modsecurity",
+    "waf",
+    "security"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Datasource",
+        "name": "datasource",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "ModSecurity Alerts",
+  "uid": "modsec-alerts",
+  "version": 1
+}

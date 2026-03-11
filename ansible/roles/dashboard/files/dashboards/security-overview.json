@@ -1,0 +1,179 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"},
+    {"type": "datasource", "id": "loki", "name": "Loki", "version": "1.0.0"}
+  ],
+  "annotations": {"list": []},
+  "description": "Security Overview – ModSecurity WAF events and LLM pipeline logs",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 10,
+      "title": "ModSecurity WAF",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 2, "spanNulls": false},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 1},
+      "id": 1,
+      "options": {
+        "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "right"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (host) (count_over_time({pipeline=\"security\", job=\"modsecurity\"} [$__interval]))",
+          "legendFormat": "ModSec – {{host}}",
+          "refId": "A"
+        }
+      ],
+      "title": "ModSecurity Event Rate by Host",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 9},
+      "id": 2,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "{pipeline=\"security\", job=\"modsecurity\", host=~\"$host\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "ModSecurity Audit Log Stream",
+      "type": "logs"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 19},
+      "id": 11,
+      "title": "LLM Pipeline",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 2, "spanNulls": false},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 20},
+      "id": 3,
+      "options": {
+        "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "right"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (host) (count_over_time({pipeline=\"security\", job=\"llm-pipeline\"} [$__interval]))",
+          "legendFormat": "LLM – {{host}}",
+          "refId": "A"
+        }
+      ],
+      "title": "LLM Pipeline Log Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 27},
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "{pipeline=\"security\", job=\"llm-pipeline\", host=~\"$host\"} |~ \"$filter\"",
+          "refId": "A"
+        }
+      ],
+      "title": "LLM Pipeline Output Stream",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["security", "modsecurity", "llm", "waf"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "type": "datasource",
+        "label": "Datasource"
+      },
+      {
+        "current": {},
+        "datasource": {"type": "loki", "uid": "${datasource}"},
+        "definition": "label_values({pipeline=\"security\"}, host)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "host",
+        "query": {"label": "host", "stream": "{pipeline=\"security\"}", "type": 1},
+        "refresh": 2,
+        "sort": 0,
+        "type": "query",
+        "label": "Host"
+      },
+      {
+        "current": {"selected": false, "text": "", "value": ""},
+        "hide": 0,
+        "name": "filter",
+        "options": [{"selected": true, "text": "", "value": ""}],
+        "query": "",
+        "type": "textbox",
+        "label": "Log Filter"
+      }
+    ]
+  },
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Security Overview",
+  "uid": "security-overview",
+  "version": 1
+}

@@ -1,0 +1,6 @@
+---
+- name: Setup Monitoring Dashboard
+  hosts: dashboard
+  become: true
+  roles:
+    - dashboard

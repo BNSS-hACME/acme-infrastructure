@@ -34,3 +34,9 @@
 
 - name: Secure Web App
   import_playbook: secure.yml
+
+- name: Monitoring Dashboard
+  import_playbook: dashboard.yml
+
+- name: Log Shipping (Alloy)
+  import_playbook: log_shipper.yml

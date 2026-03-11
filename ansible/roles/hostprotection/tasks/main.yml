@@ -139,3 +139,47 @@
     and ('already disabled' not in ((hostprotection_a2dissite.stdout | default('')) | lower))
     and ('does not exist' not in ((hostprotection_a2dissite.stderr | default('')) | lower))
   notify: Restart Apache
+
+# ---- ModSecurity Audit Log → JSON Converter ----
+
+- name: Ensure converter directory exists
+  ansible.builtin.file:
+    path: /opt/hostprotection
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy ModSecurity JSON converter script
+  ansible.builtin.template:
+    src: modsec-json-convert.py.j2
+    dest: /opt/hostprotection/modsec-json-convert.py
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart modsec-json-convert
+
+- name: Deploy ModSecurity JSON converter systemd service
+  ansible.builtin.template:
+    src: modsec-json-convert.service.j2
+    dest: /etc/systemd/system/modsec-json-convert.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart modsec-json-convert
+
+- name: Ensure ModSecurity JSON log file exists
+  ansible.builtin.file:
+    path: "{{ hostprotection_modsec_audit_json }}"
+    state: touch
+    owner: www-data
+    group: adm
+    mode: "0640"
+  changed_when: false
+
+- name: Enable and start ModSecurity JSON converter
+  ansible.builtin.systemd:
+    name: modsec-json-convert
+    enabled: true
+    state: started
+    daemon_reload: true

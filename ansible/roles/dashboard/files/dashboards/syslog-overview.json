@@ -1,0 +1,229 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"},
+    {"type": "datasource", "id": "loki", "name": "Loki", "version": "1.0.0"}
+  ],
+  "annotations": {"list": []},
+  "description": "Syslog and auth.log overview across all nodes",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 10,
+      "title": "Log Volume",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 2, "spanNulls": false},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 1},
+      "id": 1,
+      "options": {
+        "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "right"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (host) (count_over_time({pipeline=\"base\", host=~\"$host\", job=\"syslog\"} [$__interval]))",
+          "legendFormat": "syslog – {{host}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (host) (count_over_time({pipeline=\"base\", host=~\"$host\", job=\"auth\"} [$__interval]))",
+          "legendFormat": "auth – {{host}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Log Rate per Host & Source",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9},
+      "id": 11,
+      "title": "Authentication Events",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 2, "spanNulls": false},
+          "unit": "short"
+        },
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "SSH failures"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]},
+          {"matcher": {"id": "byName", "options": "SSH accepted"}, "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]}
+        ]
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
+      "id": 2,
+      "options": {
+        "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum(count_over_time({pipeline=\"base\", job=\"auth\", host=~\"$host\"} |= `Failed password` [$__interval]))",
+          "legendFormat": "SSH failures",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum(count_over_time({pipeline=\"base\", job=\"auth\", host=~\"$host\"} |= `Accepted` [$__interval]))",
+          "legendFormat": "SSH accepted",
+          "refId": "B"
+        }
+      ],
+      "title": "SSH Login Events",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 2, "spanNulls": false},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
+      "id": 3,
+      "options": {
+        "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (host) (count_over_time({pipeline=\"base\", job=\"auth\", host=~\"$host\"} |= `sudo` [$__interval]))",
+          "legendFormat": "sudo – {{host}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Sudo Usage",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
+      "id": 12,
+      "title": "Live Log Streams",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 19},
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "{pipeline=\"base\", job=\"auth\", host=~\"$host\"} |~ \"$filter\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Auth Log Stream",
+      "type": "logs"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 19},
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "{pipeline=\"base\", job=\"syslog\", host=~\"$host\"} |~ \"$filter\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Syslog Stream",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["syslog", "auth", "system"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "type": "datasource",
+        "label": "Datasource"
+      },
+      {
+        "current": {},
+        "datasource": {"type": "loki", "uid": "${datasource}"},
+        "definition": "label_values({pipeline=\"base\"}, host)",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "name": "host",
+        "query": {"label": "host", "stream": "{pipeline=\"base\"}", "type": 1},
+        "refresh": 2,
+        "sort": 1,
+        "type": "query",
+        "label": "Host"
+      },
+      {
+        "current": {"selected": false, "text": "", "value": ""},
+        "hide": 0,
+        "name": "filter",
+        "options": [{"selected": true, "text": "", "value": ""}],
+        "query": "",
+        "type": "textbox",
+        "label": "Log Filter"
+      }
+    ]
+  },
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Syslog Overview",
+  "uid": "syslog-overview",
+  "version": 1
+}

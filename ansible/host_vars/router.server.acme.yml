@@ -1,5 +1,6 @@
 ---
 ids_home_nets:
+
   - "10.0.50.0/24"
 ids_install_evebox: true
 ids_evebox_host: 0.0.0.0
