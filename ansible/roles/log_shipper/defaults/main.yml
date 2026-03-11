@@ -1,12 +1,7 @@
 ---
-# URL of the Loki push endpoint (override per host/group if needed)
-log_shipper_loki_url: "http://10.0.50.10:3100/loki/api/v1/push"
+log_shipper_loki_url: "http://10.0.50.50:3100/loki/api/v1/push"
 
-# Enable the Suricata IDS pipeline (set true on hosts running Suricata)
-log_shipper_suricata_enabled: false
+log_shipper_suricata_enabled: true
+log_shipper_security_enabled: true
 
-# Enable the Security pipeline (ModSecurity + LLM logs)
-log_shipper_security_enabled: false
-
-# Path to LLM pipeline log file
 log_shipper_llm_log_path: "/var/log/llm_pipeline/output.log"

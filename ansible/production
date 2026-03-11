@@ -54,5 +54,4 @@ rpi1.server.acme
 rpi2.server.acme
 
 [dashboard]
-dns.server.acme
 dvwa.server.acme
