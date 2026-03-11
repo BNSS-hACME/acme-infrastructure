@@ -1,0 +1,223 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "9.0.0"},
+    {"type": "datasource", "id": "loki", "name": "Loki", "version": "1.0.0"}
+  ],
+  "annotations": {"list": []},
+  "description": "Suricata IDS – alerts overview from eve.json and fast.log",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 10,
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 2, "spanNulls": false},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 1},
+      "id": 1,
+      "options": {
+        "legend": {"calcs": ["sum"], "displayMode": "table", "placement": "right"},
+        "tooltip": {"mode": "multi"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (host) (count_over_time({pipeline=\"suricata\", job=\"suricata-eve\"} |= `\"event_type\":\"alert\"` [$__interval]))",
+          "legendFormat": "{{host}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Alert Rate by Host",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 9},
+      "id": 2,
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": {"displayMode": "table", "placement": "right", "values": ["value"]},
+        "pieType": "pie",
+        "tooltip": {"mode": "single"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (category) (count_over_time({pipeline=\"suricata\", job=\"suricata-eve\"} |= `\"event_type\":\"alert\"` | json | category != `` [$__range]))",
+          "legendFormat": "{{category}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Alert Categories",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 9},
+      "id": 3,
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": {"displayMode": "table", "placement": "right", "values": ["value"]},
+        "pieType": "donut",
+        "tooltip": {"mode": "single"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (severity) (count_over_time({pipeline=\"suricata\", job=\"suricata-eve\"} |= `\"event_type\":\"alert\"` | json | severity != `` [$__range]))",
+          "legendFormat": "Severity {{severity}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Severity Distribution",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 17},
+      "id": 11,
+      "title": "Top Signatures",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "fieldConfig": {
+        "defaults": {"custom": {"filterable": true}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "count"}, "properties": [{"id": "displayName", "value": "Alert Count"}, {"id": "custom.width", "value": 120}]},
+          {"matcher": {"id": "byName", "options": "signature"}, "properties": [{"id": "displayName", "value": "Signature"}, {"id": "custom.width", "value": 500}]}
+        ]
+      },
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 18},
+      "id": 4,
+      "options": {
+        "footer": {"show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "Alert Count"}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "sum by (signature) (count_over_time({pipeline=\"suricata\", job=\"suricata-eve\"} |= `\"event_type\":\"alert\"` | json | line_format `{{.alert}}` | json | signature != `` [$__range]))",
+          "legendFormat": "{{signature}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "title": "Top Alert Signatures",
+      "transformations": [
+        {"id": "labelsToFields", "options": {"mode": "rows", "valueLabel": "signature"}},
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"Value": "count", "Label": "signature"}}}
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 28},
+      "id": 12,
+      "title": "Raw Log Stream",
+      "type": "row"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 29},
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "${datasource}"},
+          "expr": "{pipeline=\"suricata\", host=~\"$host\", job=~\"$job\"} |= `\"event_type\":\"alert\"`",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata Alert Log Stream",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["suricata", "ids", "security"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "type": "datasource",
+        "label": "Datasource"
+      },
+      {
+        "current": {},
+        "datasource": {"type": "loki", "uid": "${datasource}"},
+        "definition": "label_values({pipeline=\"suricata\"}, host)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "host",
+        "query": {"label": "host", "stream": "{pipeline=\"suricata\"}", "type": 1},
+        "refresh": 2,
+        "sort": 0,
+        "type": "query",
+        "label": "Host"
+      },
+      {
+        "current": {},
+        "datasource": {"type": "loki", "uid": "${datasource}"},
+        "definition": "label_values({pipeline=\"suricata\"}, job)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "job",
+        "query": {"label": "job", "stream": "{pipeline=\"suricata\"}", "type": 1},
+        "refresh": 2,
+        "sort": 0,
+        "type": "query",
+        "label": "Log Source"
+      }
+    ]
+  },
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Suricata IDS Overview",
+  "uid": "suricata-ids-overview",
+  "version": 1
+}

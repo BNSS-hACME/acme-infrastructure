@@ -16,3 +16,5 @@ unbound_local_data:
 firewall:
   ports:
     - 53
+    - 3000
+    - 3100

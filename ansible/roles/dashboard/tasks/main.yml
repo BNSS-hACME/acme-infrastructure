@@ -71,17 +71,6 @@
     state: started
     daemon_reload: true
 
-- name: Create Grafana provisioning directory
-  ansible.builtin.file:
-    path: /etc/grafana/provisioning
-    state: directory
-    mode: "0755"
-    owner: grafana
-    group: grafana
-  loop:
-    - /etc/grafana/provisioning/datasources
-    - /etc/grafana/provisioning/dashboards
-
 - name: Create Grafana provisioning directories
   ansible.builtin.file:
     path: "{{ item }}"
@@ -92,6 +81,7 @@
   loop:
     - /etc/grafana/provisioning/datasources
     - /etc/grafana/provisioning/dashboards
+    - /var/lib/grafana/dashboards
 
 - name: Deploy Loki datasource
   ansible.builtin.template:

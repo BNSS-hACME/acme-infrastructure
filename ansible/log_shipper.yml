@@ -1,0 +1,16 @@
+---
+- name: Deploy Log Shipper (Alloy) to IDS nodes
+  hosts: ids
+  become: true
+  vars:
+    log_shipper_suricata_enabled: true
+  roles:
+    - log_shipper
+
+- name: Deploy Log Shipper (Alloy) to DVWA / Security nodes
+  hosts: dvwa
+  become: true
+  vars:
+    log_shipper_security_enabled: true
+  roles:
+    - log_shipper
