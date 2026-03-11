@@ -336,6 +336,7 @@
     jump: NFQUEUE
     action: insert
     comment: "Suricata IPS inline inspection"
+    queue_bypass: true
   when: ids_mode_normalized == 'ips' | bool
   notify: Save iptables rules
 
