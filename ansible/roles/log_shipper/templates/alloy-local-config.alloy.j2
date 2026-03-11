@@ -65,7 +65,7 @@ loki.process "suricata" {
 {% if log_shipper_security_enabled | default(false) %}
 local.file_match "security_logs" {
   path_targets = [
-    {__path__ = "/var/log/apache2/modsec_audit.log", job = "modsecurity"},
+    {__path__ = "/var/log/apache2/modsec_audit.json", job = "modsecurity"},
     {__path__ = "{{ log_shipper_llm_log_path }}",    job = "llm-pipeline"},
   ]
 }
@@ -76,6 +76,25 @@ loki.source.file "security_files" {
 }
 
 loki.process "security" {
+  stage.json {
+    expressions = {
+      src_ip          = "src_ip",
+      severity        = "severity",
+      action          = "action",
+      response_status = "response_status",
+      unique_id       = "unique_id",
+    }
+  }
+
+  stage.labels {
+    values = {
+      src_ip          = "",
+      severity        = "",
+      action          = "",
+      response_status = "",
+    }
+  }
+
   stage.static_labels {
     values = {
       host     = "{{ inventory_hostname }}",

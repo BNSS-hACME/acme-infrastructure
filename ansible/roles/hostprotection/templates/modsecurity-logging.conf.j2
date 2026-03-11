@@ -1,6 +1,6 @@
 SecAuditEngine RelevantOnly
 
 SecAuditLogType Serial
-SecAuditLog /var/log/apache2/modsec_audit.log
+SecAuditLog {{ hostprotection_modsec_audit_log }}
 
 SecAuditLogParts ABCEFHZ

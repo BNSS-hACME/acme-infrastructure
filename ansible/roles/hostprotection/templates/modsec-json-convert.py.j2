@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""
+ModSecurity v2 Serial Audit Log → JSON-Lines Converter
+
+Reads /var/log/apache2/modsec_audit.log in the native multi-part
+Serial format and writes one JSON object per transaction to
+/var/log/apache2/modsec_audit.json.
+
+Managed by Ansible – do not edit manually.
+"""
+
+import json
+import os
+import re
+import signal
+import sys
+import time
+
+INPUT_LOG  = "{{ hostprotection_modsec_audit_log }}"
+OUTPUT_LOG = "{{ hostprotection_modsec_audit_json }}"
+
+# Regex for the section boundary: --xxxxxxxx-A--, --xxxxxxxx-B--, etc.
+SECTION_RE = re.compile(r"^--([0-9a-fA-F]+)-([A-Z])--$")
+
+# Section A timestamp line:
+# [31/Mar/2026:12:34:56 +0100] Yxyz123 192.168.1.1 43210 10.0.50.10 80
+HEADER_RE = re.compile(
+    r"^\[(?P<timestamp>[^\]]+)\]\s+"
+    r"(?P<unique_id>\S+)\s+"
+    r"(?P<src_ip>\S+)\s+(?P<src_port>\d+)\s+"
+    r"(?P<dst_ip>\S+)\s+(?P<dst_port>\d+)"
+)
+
+# Message pattern in Section H (audit log trailer)
+MSG_RE = re.compile(
+    r'\[msg\s+"(?P<msg>[^"]+)"\]'
+)
+SEVERITY_RE = re.compile(
+    r'\[severity\s+"(?P<severity>[^"]+)"\]'
+)
+RULE_ID_RE = re.compile(
+    r'\[id\s+"(?P<id>\d+)"\]'
+)
+
+running = True
+
+
+def handle_signal(signum, frame):
+    global running
+    running = False
+
+
+def parse_section_a(lines):
+    """Parse Section A: timestamp, unique_id, source/dest."""
+    for line in lines:
+        m = HEADER_RE.search(line)
+        if m:
+            return m.groupdict()
+    return {}
+
+
+def parse_section_b(lines):
+    """Parse Section B: request line + headers."""
+    result = {}
+    if lines:
+        result["request_line"] = lines[0].strip()
+        headers = {}
+        for line in lines[1:]:
+            line = line.strip()
+            if ":" in line:
+                key, _, val = line.partition(":")
+                headers[key.strip().lower()] = val.strip()
+        if headers:
+            result["request_headers"] = headers
+    return result
+
+
+def parse_section_f(lines):
+    """Parse Section F: response status + headers."""
+    result = {}
+    if lines:
+        # First line is the status line, e.g. "HTTP/1.1 403 Forbidden"
+        parts = lines[0].strip().split(None, 2)
+        if len(parts) >= 2:
+            result["response_protocol"] = parts[0]
+            result["response_status"] = int(parts[1]) if parts[1].isdigit() else parts[1]
+            if len(parts) >= 3:
+                result["response_status_text"] = parts[2]
+    return result
+
+
+def parse_section_h(lines):
+    """Parse Section H: audit log trailer with messages, actions, rule info."""
+    messages = []
+    action = None
+    for line in lines:
+        line = line.strip()
+
+        # Extract messages
+        for m in MSG_RE.finditer(line):
+            msg_entry = {"msg": m.group("msg")}
+            sev = SEVERITY_RE.search(line)
+            if sev:
+                msg_entry["severity"] = sev.group("severity")
+            rid = RULE_ID_RE.search(line)
+            if rid:
+                msg_entry["rule_id"] = rid.group("id")
+            messages.append(msg_entry)
+
+        # Extract action
+        if line.startswith("Action:"):
+            action = line.split(":", 1)[1].strip()
+
+    result = {}
+    if messages:
+        result["messages"] = messages
+    if action:
+        result["action"] = action
+    return result
+
+
+def parse_section_e(lines):
+    """Parse Section E: response body (truncated)."""
+    body = "\n".join(l.rstrip() for l in lines).strip()
+    if body:
+        return {"response_body": body[:2048]}
+    return {}
+
+
+def build_json_record(tx_id, sections):
+    """Build a flat JSON record from parsed sections."""
+    record = {"transaction_id": tx_id}
+
+    if "A" in sections:
+        record.update(parse_section_a(sections["A"]))
+    if "B" in sections:
+        record.update(parse_section_b(sections["B"]))
+    if "F" in sections:
+        record.update(parse_section_f(sections["F"]))
+    if "H" in sections:
+        record.update(parse_section_h(sections["H"]))
+    if "E" in sections:
+        record.update(parse_section_e(sections["E"]))
+
+    # Derive a top-level severity from first message if available
+    msgs = record.get("messages", [])
+    if msgs and "severity" in msgs[0]:
+        record["severity"] = msgs[0]["severity"]
+
+    return record
+
+
+def tail_and_convert():
+    """Main loop: tail the audit log, parse transactions, write JSON."""
+    out_fd = open(OUTPUT_LOG, "a", buffering=1)  # line-buffered
+
+    pos = 0
+    inode = None
+
+    # Start at end of file if it exists
+    if os.path.isfile(INPUT_LOG):
+        stat = os.stat(INPUT_LOG)
+        pos = stat.st_size
+        inode = stat.st_ino
+
+    current_tx = None
+    current_section = None
+    sections = {}
+    section_lines = []
+
+    while running:
+        try:
+            # Handle log rotation: check if inode changed
+            if os.path.isfile(INPUT_LOG):
+                stat = os.stat(INPUT_LOG)
+                if inode is not None and stat.st_ino != inode:
+                    # File rotated
+                    pos = 0
+                    inode = stat.st_ino
+                elif stat.st_size < pos:
+                    # File truncated
+                    pos = 0
+                inode = stat.st_ino
+            else:
+                time.sleep(1)
+                continue
+
+            with open(INPUT_LOG, "r", errors="replace") as f:
+                f.seek(pos)
+                new_data = f.read()
+                if not new_data:
+                    time.sleep(0.5)
+                    continue
+                pos = f.tell()
+
+            for line in new_data.splitlines():
+                m = SECTION_RE.match(line)
+                if m:
+                    tx_id = m.group(1)
+                    section_letter = m.group(2)
+
+                    # Save previous section lines
+                    if current_section and section_lines:
+                        sections[current_section] = section_lines
+
+                    if section_letter == "Z":
+                        # End of transaction – save & emit
+                        if current_tx:
+                            record = build_json_record(current_tx, sections)
+                            try:
+                                out_fd.write(json.dumps(record, ensure_ascii=False) + "\n")
+                                out_fd.flush()
+                            except Exception as e:
+                                print(f"Write error: {e}", file=sys.stderr)
+
+                        # Reset
+                        current_tx = None
+                        current_section = None
+                        sections = {}
+                        section_lines = []
+
+                    elif section_letter == "A":
+                        # Start of a new transaction
+                        current_tx = tx_id
+                        current_section = "A"
+                        sections = {}
+                        section_lines = []
+                    else:
+                        current_section = section_letter
+                        section_lines = []
+                else:
+                    if current_section:
+                        section_lines.append(line)
+
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            time.sleep(1)
+
+    out_fd.close()
+
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+    tail_and_convert()

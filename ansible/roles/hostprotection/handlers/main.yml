@@ -8,3 +8,9 @@
   ansible.builtin.service:
     name: apache2
     state: restarted
+
+- name: Restart modsec-json-convert
+  ansible.builtin.systemd:
+    name: modsec-json-convert
+    state: restarted
+    daemon_reload: true

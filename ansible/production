@@ -55,3 +55,4 @@ rpi2.server.acme
 
 [dashboard]
 dns.server.acme
+dvwa.server.acme

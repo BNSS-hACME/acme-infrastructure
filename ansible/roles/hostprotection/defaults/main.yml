@@ -1,2 +1,4 @@
 ---
 hostprotection_crs_version: "4.24.0"
+hostprotection_modsec_audit_log: /var/log/apache2/modsec_audit.log
+hostprotection_modsec_audit_json: /var/log/apache2/modsec_audit.json

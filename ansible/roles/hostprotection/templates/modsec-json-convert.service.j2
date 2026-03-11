@@ -1,0 +1,18 @@
+# Managed by Ansible – do not edit manually
+[Unit]
+Description=ModSecurity Audit Log to JSON Converter
+After=apache2.service
+Wants=apache2.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/hostprotection/modsec-json-convert.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
