@@ -1,7 +1,7 @@
 ---
 log_shipper_loki_url: "http://10.0.50.50:3100/loki/api/v1/push"
 
-log_shipper_suricata_enabled: true
-log_shipper_security_enabled: true
+log_shipper_suricata_enabled: false
+log_shipper_security_enabled: false
 
 log_shipper_llm_log_path: "/var/log/llm_pipeline/output.log"
