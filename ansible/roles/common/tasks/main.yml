@@ -49,6 +49,8 @@
   ansible.builtin.apt:
     name: iptables-persistent
     state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
   when: firewall is defined
 
 - name: Deploy iptables rules
