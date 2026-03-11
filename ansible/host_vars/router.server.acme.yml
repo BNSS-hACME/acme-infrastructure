@@ -35,3 +35,5 @@ ids_rule_enable_patterns:
   - "group:emerging-dos"
 ids_rule_drop_patterns:
   - "group:emerging-dos"
+log_shipper_suricata_enabled: true
+log_shipper_security_enabled: false

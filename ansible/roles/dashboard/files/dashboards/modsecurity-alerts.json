@@ -360,7 +360,7 @@
           "refId": "A"
         }
       ],
-      "title": "Top 10 Ruled/Messages Triggered",
+      "title": "Top 10 Rules/Messages Triggered",
       "type": "bargauge"
     },
     {
