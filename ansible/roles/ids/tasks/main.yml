@@ -1,0 +1,380 @@
+---
+- name: Validate IDS mode value
+  ansible.builtin.assert:
+    that:
+      - ids_mode | lower in ['ids', 'ips']
+    fail_msg: "ids_mode must be either 'ids' or 'ips'."
+    quiet: true
+
+- name: Normalize IDS mode value
+  ansible.builtin.set_fact:
+    ids_mode_normalized: "{{ ids_mode | lower }}"
+
+- name: Validate IDS interface list
+  ansible.builtin.assert:
+    that:
+      - ids_interfaces | length > 0
+    fail_msg: "ids_interfaces must contain at least one interface."
+    quiet: true
+
+- name: Validate IDS home network list
+  ansible.builtin.assert:
+    that:
+      - ids_home_nets | length > 0
+    fail_msg: "ids_home_nets must contain at least one subnet."
+    quiet: true
+
+- name: Remove EveBox APT repository before package refresh
+  ansible.builtin.deb822_repository:
+    name: evebox
+    state: absent
+
+- name: Remove legacy EveBox APT source list before package refresh
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/evebox.list
+    state: absent
+
+- name: Install suricata IDS
+  ansible.builtin.apt:
+    name:
+      - suricata
+      - suricata-update
+    state: present
+    update_cache: true
+
+- name: Ensure IDS directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ ids_log_dir }}"
+      owner: root
+      group: root
+      mode: "0755"
+    - path: "{{ ids_rule_path }}"
+      owner: root
+      group: root
+      mode: "0755"
+
+- name: Ensure Suricata rule files exist for first run validation
+  ansible.builtin.copy:
+    content: ""
+    dest: "{{ ids_rule_path }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  loop: "{{ ids_rule_files }}"
+
+- name: Deploy custom Suricata rules
+  ansible.builtin.template:
+    src: local.rules.j2
+    dest: "{{ ids_rule_path }}/local.rules"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart IDS
+
+- name: Deploy Suricata threshold config
+  ansible.builtin.template:
+    src: suricata-threshold.conf.j2
+    dest: "{{ ids_threshold_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart IDS
+
+- name: Deploy IDS config
+  ansible.builtin.template:
+    src: suricata.yaml.j2
+    dest: /etc/suricata/suricata.yaml
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "suricata -T -c %s"
+  notify: Restart IDS
+
+- name: Configure Suricata startup options
+  ansible.builtin.copy:
+    dest: /etc/default/suricata
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% if ids_mode_normalized == 'ips' %}
+      SURICATA_OPTIONS="-q 0"
+      {% else %}
+      SURICATA_OPTIONS="--af-packet"
+      {% endif %}
+  notify: Restart IDS
+
+- name: Create Suricata systemd override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/suricata.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ids_mode_normalized == 'ips'
+
+- name: Deploy Suricata systemd override
+  ansible.builtin.template:
+    src: suricata-override.conf.j2
+    dest: /etc/systemd/system/suricata.service.d/override.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart IDS
+  when: ids_mode_normalized == 'ips'
+
+- name: Deploy Suricata rule update config
+  ansible.builtin.template:
+    src: suricata-update.yaml.j2
+    dest: /etc/suricata/update.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy Suricata enable rule patterns
+  ansible.builtin.template:
+    src: suricata-enable.conf.j2
+    dest: /etc/suricata/enable.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy Suricata disable rule patterns
+  ansible.builtin.template:
+    src: suricata-disable.conf.j2
+    dest: /etc/suricata/disable.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy Suricata drop rule patterns
+  ansible.builtin.template:
+    src: suricata-drop.conf.j2
+    dest: /etc/suricata/drop.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Update Suricata rules
+  ansible.builtin.command:
+    cmd: suricata-update --config /etc/suricata/update.yaml
+  register: ids_rules_update
+  failed_when: ids_rules_update.rc != 0
+  changed_when: "'No changes detected' not in ((ids_rules_update.stdout | default('')) ~ (ids_rules_update.stderr | default('')))"
+  until: ids_rules_update.rc == 0
+  retries: 3
+  delay: 5
+  when: ids_update_rules | bool
+  notify: Restart IDS
+
+- name: Ensure keyring dir exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ids_install_evebox | bool
+
+- name: Download EveBox repository signing key
+  ansible.builtin.get_url:
+    url: https://evebox.org/files/GPG-KEY-evebox
+    dest: /etc/apt/keyrings/evebox.asc
+    owner: root
+    group: root
+    mode: "0644"
+  when: ids_install_evebox | bool
+
+- name: Add EveBox APT repository
+  ansible.builtin.deb822_repository:
+    name: evebox
+    types: [deb]
+    uris: "https://evebox.org/files/debian"
+    suites: stable
+    components: [main]
+    trusted: "{{ ids_evebox_repo_trusted | bool }}"
+    signed_by: "{{ (ids_evebox_repo_trusted | bool) | ternary(omit, '/etc/apt/keyrings/evebox.asc') }}"
+    state: present
+  when: ids_install_evebox | bool
+
+- name: Install EveBox
+  ansible.builtin.apt:
+    name: evebox
+    state: present
+    update_cache: true
+  when: ids_install_evebox | bool
+
+- name: Ensure EveBox directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ ids_evebox_config_dir }}"
+      owner: root
+      group: root
+      mode: "0755"
+    - path: "{{ ids_evebox_data_dir }}"
+      owner: evebox
+      group: evebox
+      mode: "0750"
+  when: ids_install_evebox | bool
+
+- name: Deploy EveBox config
+  ansible.builtin.template:
+    src: evebox.yaml.j2
+    dest: "{{ ids_evebox_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: ids_install_evebox | bool
+  notify: Restart EveBox
+
+- name: Configure EveBox service options
+  ansible.builtin.copy:
+    dest: /etc/default/evebox
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      EVEBOX_OPTS="--host {{ ids_evebox_host }} --port {{ ids_evebox_port }}
+      {%- if not ids_evebox_auth_required %} --no-auth{% endif %}
+      {%- if not ids_evebox_tls_enabled %} --no-tls{% endif %}
+      {%- for path in ids_evebox_input_paths %} --input {{ path }}{% endfor %}"
+      EVEBOX_AUTHENTICATION_REQUIRED={{ 'true' if ids_evebox_auth_required else 'false' }}
+      EVEBOX_HTTP_TLS_ENABLED={{ 'true' if ids_evebox_tls_enabled else 'false' }}
+
+  when: ids_install_evebox | bool
+  notify: Restart EveBox
+
+- name: Create EveBox user non-interactive
+  ansible.builtin.command:
+    cmd: evebox config users -D {{ ids_evebox_data_dir }} add --username {{ ids_evebox_user }} --password "{{ ids_evebox_password }}"
+  register: ids_evebox_user_add
+  changed_when: ids_evebox_user_add.rc == 0
+  failed_when: ids_evebox_user_add.rc != 0 and 'UNIQUE constraint failed' not in ids_evebox_user_add.stderr
+  when: ids_install_evebox and ids_evebox_auth_required | bool
+  notify: Restart EveBox
+
+- name: Ensure EveBox configuration database has correct permissions
+  ansible.builtin.file:
+    path: "{{ ids_evebox_data_dir }}/config.sqlite"
+    owner: evebox
+    group: evebox
+    mode: "0640"
+  when: ids_install_evebox and ids_evebox_auth_required | bool
+
+- name: Ensure Suricata group exists for EveBox access
+  ansible.builtin.group:
+    name: "{{ ids_suricata_group }}"
+    system: true
+    state: present
+  when: ids_install_evebox | bool
+
+- name: Allow EveBox to read Suricata output
+  ansible.builtin.user:
+    name: evebox
+    groups: "{{ ids_suricata_group }}"
+    append: true
+  when: ids_install_evebox | bool
+  notify: Restart EveBox
+
+- name: Ensure IDS service is enabled
+  ansible.builtin.service:
+    name: suricata
+    state: started
+    enabled: true
+
+- name: Ensure EveBox service is enabled
+  ansible.builtin.service:
+    name: evebox
+    state: started
+    enabled: true
+  when: ids_install_evebox | bool
+
+- name: Create EveBox user non-interactive
+  ansible.builtin.command:
+    cmd: evebox config users -D {{ ids_evebox_data_dir }} add --username {{ ids_evebox_user }} --password "{{ ids_evebox_password }}"
+  register: ids_evebox_user_add
+  changed_when: ids_evebox_user_add.rc == 0
+  failed_when: ids_evebox_user_add.rc != 0 and 'UNIQUE constraint failed' not in ids_evebox_user_add.stderr
+  when: ids_install_evebox and ids_evebox_auth_required | bool
+  notify: Restart EveBox
+
+- name: Flush handlers to ensure Suricata is running before applying iptables rules
+  ansible.builtin.meta: flush_handlers
+
+- name: Install iptables-persistent for NFQUEUE rules
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: "'raspberrypi' not in group_names"
+
+- name: Ensure Suricata NFQUEUE chain exists (IPS inline)
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    chain_management: true
+    state: present
+  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
+  notify: Save iptables rules
+
+- name: Add NFQUEUE rule in Suricata chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    jump: NFQUEUE
+    action: insert
+    comment: "Suricata IPS inline inspection"
+    queue_bypass: true
+  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
+  notify: Save iptables rules
+
+- name: Add Suricata chain jump for FORWARD chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: FORWARD
+    jump: "{{ ids_nfqueue_chain }}"
+    action: insert
+    comment: "Suricata IPS inline inspection"
+  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
+  notify: Save iptables rules
+
+- name: Remove Suricata chain jump rules when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ item }}"
+    jump: "{{ ids_nfqueue_chain }}"
+    state: absent
+    comment: "Suricata IPS inline inspection"
+  loop:
+    - FORWARD
+    - INPUT
+  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
+  notify: Save iptables rules
+
+- name: Remove NFQUEUE rule from Suricata chain when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    jump: NFQUEUE
+    state: absent
+    comment: "Suricata IPS inline inspection"
+  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
+  notify: Save iptables rules
+
+- name: Remove Suricata NFQUEUE chain when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    chain_management: true
+    state: absent
+  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
+  notify: Save iptables rules

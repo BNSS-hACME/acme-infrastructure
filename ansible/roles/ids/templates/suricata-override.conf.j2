@@ -1,0 +1,4 @@
+[Service]
+EnvironmentFile=-/etc/default/suricata
+ExecStart=
+ExecStart=/usr/bin/suricata -D $SURICATA_OPTIONS -c /etc/suricata/suricata.yaml --pidfile /run/suricata.pid

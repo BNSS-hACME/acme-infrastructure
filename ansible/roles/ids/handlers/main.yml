@@ -1,0 +1,24 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart IDS
+  ansible.builtin.service:
+    name: suricata
+    state: restarted
+
+- name: Restart EveBox
+  ansible.builtin.service:
+    name: evebox
+    state: restarted
+
+- name: Restart active-response
+  ansible.builtin.systemd:
+    name: active-response
+    state: restarted
+
+- name: Save iptables rules
+  ansible.builtin.command:
+    cmd: netfilter-persistent save
+  changed_when: false

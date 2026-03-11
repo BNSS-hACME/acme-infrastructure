@@ -1,0 +1,8 @@
+---
+sources:
+{% for source in ids_rule_sources %}
+  - {{ source }}
+{% endfor %}
+enable-conf: /etc/suricata/enable.conf
+disable-conf: /etc/suricata/disable.conf
+drop-conf: /etc/suricata/drop.conf

@@ -1,0 +1,28 @@
+database:
+  type: sqlite
+
+data-directory: {{ ids_evebox_data_dir }}
+bookmark-directory: {{ ids_evebox_data_dir }}
+
+input:
+  - interface: event
+    enabled: true
+    providers:
+{% for evebox_input_path in ids_evebox_input_paths %}
+      - file:
+          enabled: true
+          filename: {{ evebox_input_path }}
+{% endfor %}
+
+http:
+  tls:
+    enabled: {{ 'true' if ids_evebox_tls_enabled else 'false' }}
+
+authentication:
+  required: {{ 'true' if ids_evebox_auth_required else 'false' }}
+
+retention:
+  days: {{ ids_evebox_retention_days }}
+
+geoip:
+  disabled: true

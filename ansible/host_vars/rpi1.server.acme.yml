@@ -5,3 +5,36 @@ raspberrypi_static_dhcp_hosts:
 raspberrypi_port_forwards:
   - { proto: udp, port: 1194, dest: "192.168.50.100" }
   - { proto: udp, port: 51820, dest: "192.168.50.100" }
+
+
+ids_home_nets:
+  - "10.0.50.0/24"
+ids_install_evebox: true
+ids_evebox_host: 0.0.0.0
+ids_mode: ids
+ids_custom_rules:
+  - >
+    alert tcp $EXTERNAL_NET any -> $HOME_NET [80,443,22]
+    (msg:"LOCAL SYN Flood inbound - Potential DDoS"; flags:S;
+    threshold: type both, track by_dst, count 400, seconds 5;
+    classtype:attempted-dos; sid:1000005; rev:2;)
+  - >
+    alert icmp $EXTERNAL_NET any -> $HOME_NET any
+    (msg:"LOCAL ICMP Flood inbound"; itype:8;
+    threshold: type both, track by_dst, count 100, seconds 1;
+    classtype:attempted-dos; sid:1000006; rev:1;)
+  - >
+    alert udp $EXTERNAL_NET any -> $HOME_NET any
+    (msg:"LOCAL UDP Flood inbound";
+    threshold: type both, track by_dst, count 500, seconds 1;
+    classtype:attempted-dos; sid:1000007; rev:1;)
+  - >
+    alert tcp $EXTERNAL_NET any -> $HOME_NET any
+    (msg:"LOCAL TCP Flood (potential ACK/RST) inbound"; flow:to_server;
+    threshold: type both, track by_dst, count 1000, seconds 1;
+    classtype:attempted-dos; sid:1000008; rev:1;)
+ids_rule_enable_patterns:
+  - "re:Nmap"
+  - "group:emerging-dos"
+ids_rule_drop_patterns:
+  - "group:emerging-dos"
