@@ -7,6 +7,7 @@ firewall:
     - 10.0.10.0/24 # Stockholm
     - 10.0.20.0/24 # London
     - 10.0.50.0/24 # Servers(in Stockholm)
+    - 10.0.30.0/24 # Site-to-Site VPN
     # No VPN Clients
 
 vault_secure_oidc_passphrase: !vault |
