@@ -13,9 +13,3 @@
   ansible.builtin.systemd:
     name: openvpn-auth-oauth2
     state: restarted
-
-- name: Apply vpn policy route
-  ansible.builtin.shell: |
-    ip rule add from {{ openvpn_vpn_subnet }}/24 table 100 2>/dev/null || true
-    ip route replace default via 10.0.50.1 table 100
-  changed_when: false
