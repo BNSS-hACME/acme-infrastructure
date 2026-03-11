@@ -51,7 +51,7 @@
     state: present
   environment:
     DEBIAN_FRONTEND: noninteractive
-  when: firewall is defined
+  when: firewall is defined and 'raspberrypi' not in group_names
 
 - name: Deploy iptables rules
   ansible.builtin.template:
@@ -62,4 +62,4 @@
     mode: "0644"
     validate: "iptables-restore --test %s"
   notify: Restart netfilter-persistent
-  when: firewall is defined
+  when: firewall is defined and 'raspberrypi' not in group_names

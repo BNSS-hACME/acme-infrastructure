@@ -321,13 +321,14 @@
     state: present
   environment:
     DEBIAN_FRONTEND: noninteractive
+  when: "'raspberrypi' not in group_names"
 
 - name: Ensure Suricata NFQUEUE chain exists (IPS inline)
   ansible.builtin.iptables:
     chain: "{{ ids_nfqueue_chain }}"
     chain_management: true
     state: present
-  when: ids_mode_normalized == 'ips' | bool
+  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
   notify: Save iptables rules
 
 - name: Add NFQUEUE rule in Suricata chain (IPS inline)
@@ -337,7 +338,7 @@
     action: insert
     comment: "Suricata IPS inline inspection"
     queue_bypass: true
-  when: ids_mode_normalized == 'ips' | bool
+  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
   notify: Save iptables rules
 
 - name: Add Suricata chain jump for FORWARD chain (IPS inline)
@@ -346,7 +347,7 @@
     jump: "{{ ids_nfqueue_chain }}"
     action: insert
     comment: "Suricata IPS inline inspection"
-  when: ids_mode_normalized == 'ips' | bool
+  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
   notify: Save iptables rules
 
 - name: Remove Suricata chain jump rules when in IDS mode
@@ -358,7 +359,7 @@
   loop:
     - FORWARD
     - INPUT
-  when: ids_mode_normalized == 'ids' | bool
+  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
   notify: Save iptables rules
 
 - name: Remove NFQUEUE rule from Suricata chain when in IDS mode
@@ -367,7 +368,7 @@
     jump: NFQUEUE
     state: absent
     comment: "Suricata IPS inline inspection"
-  when: ids_mode_normalized == 'ids' | bool
+  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
   notify: Save iptables rules
 
 - name: Remove Suricata NFQUEUE chain when in IDS mode
@@ -375,5 +376,5 @@
     chain: "{{ ids_nfqueue_chain }}"
     chain_management: true
     state: absent
-  when: ids_mode_normalized == 'ids' | bool
+  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
   notify: Save iptables rules
