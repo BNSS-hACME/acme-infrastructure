@@ -1,0 +1,6 @@
+---
+- name: Deploy LLM pipeline
+  hosts: dvwa
+  become: true
+  roles:
+    - llm_pipeline

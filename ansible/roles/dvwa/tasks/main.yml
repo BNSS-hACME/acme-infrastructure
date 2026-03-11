@@ -115,6 +115,7 @@
     creates: /etc/apache2/mods-enabled/rewrite.load
   register: dvwa_enable_rewrite_module
   changed_when: dvwa_enable_rewrite_module.rc == 0
+  notify: Restart Apache
 
 # --- LOGGING SETUP ---
 - name: Deploy DVWA apache site config
@@ -123,12 +124,14 @@
     dest: /etc/apache2/sites-available/dvwa.conf
     mode: "0644"
   register: dvwa_site_conf
+  notify: Restart Apache
 
 - name: Disable default apache site
   ansible.builtin.command: a2dissite 000-default.conf
   ignore_errors: true
   register: dvwa_disable_default_site
   changed_when: dvwa_disable_default_site.rc == 0
+  notify: Restart Apache
 
 - name: Enable DVWA site
   ansible.builtin.command: a2ensite dvwa.conf
@@ -136,6 +139,7 @@
     creates: /etc/apache2/sites-enabled/dvwa.conf
   register: dvwa_enable_dvwa_site
   changed_when: dvwa_enable_dvwa_site.rc == 0
+  notify: Restart Apache
 
 - name: Validate Apache configuration
   ansible.builtin.command: apache2ctl configtest

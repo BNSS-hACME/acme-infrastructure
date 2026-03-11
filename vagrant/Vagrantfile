@@ -80,6 +80,12 @@ Vagrant.configure("2") do |config|
   config.vm.define "router.server.acme" do |router|
     router.vm.hostname = "router.server.acme"
 
+    router.vm.network "forwarded_port",
+      guest: 5636,
+      host: 5636,
+      host_ip: "127.0.0.1",
+      auto_correct: true
+
     # External: bridged to physical LAN, 10.0.10.50
     router.vm.network "public_network",
       bridge: BRIDGE_ADAPTER,
@@ -137,8 +143,8 @@ Vagrant.configure("2") do |config|
 
     router.vm.provider :virtualbox do |vb|
       vb.name = "acme-router.server.acme"
-      vb.memory = 2048
-      vb.cpus = 1
+      vb.memory = 2000
+      vb.cpus = 3
     end
   end
 
@@ -151,6 +157,7 @@ Vagrant.configure("2") do |config|
         ip: opts[:ip],
         netmask: "255.255.255.0",
         virtualbox__intnet: "acme-internal"
+
 
       # Replace Vagrant NAT default route with router.server.acme.
       # 10.0.2.0/24 stays reachable as a directly-connected route on the Vagrant management interface — SSH unaffected.
