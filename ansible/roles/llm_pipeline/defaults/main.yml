@@ -4,7 +4,8 @@ llm_pipeline_alert_file: "/var/log/llm_alerts.log"
 llm_pipeline_prompt_file: "/opt/llm_pipeline/prompt.txt"
 llm_pipeline_model_name: "meta/llama-3.1-8b-instruct"
 llm_pipeline_api_base_url: "https://integrate.api.nvidia.com/v1"
-llm_pipeline_cron_minute: "*/5"
+llm_pipeline_cron_minute: "*"
+llm_pipeline_batch_size: 100
 llm_pipeline_cron_user: "root"
 llm_pipeline_nice: !vault |
   $ANSIBLE_VAULT;1.1;AES256

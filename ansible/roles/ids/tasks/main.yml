@@ -94,7 +94,6 @@
     owner: root
     group: root
     mode: "0644"
-    validate: "suricata -T -c %s"
   notify: Restart IDS
 
 - name: Configure Suricata startup options
@@ -164,17 +163,116 @@
     group: root
     mode: "0644"
 
+- name: Update Suricata rule sources
+  ansible.builtin.command:
+    cmd: suricata-update update-sources
+  changed_when: false
+  when: ids_update_rules | bool
+
+- name: Enable Suricata rule sources
+  ansible.builtin.command:
+    cmd: "suricata-update enable-source {{ item }}"
+  loop: "{{ ids_rule_sources }}"
+  register: ids_enable_sources_output
+  changed_when: "'already enabled' not in ids_enable_sources_output.stdout"
+  when: ids_update_rules | bool
+
 - name: Update Suricata rules
   ansible.builtin.command:
-    cmd: suricata-update --config /etc/suricata/update.yaml
+    cmd: suricata-update --config /etc/suricata/update.yaml --no-test
   register: ids_rules_update
   failed_when: ids_rules_update.rc != 0
   changed_when: "'No changes detected' not in ((ids_rules_update.stdout | default('')) ~ (ids_rules_update.stderr | default('')))"
   until: ids_rules_update.rc == 0
   retries: 3
-  delay: 5
+  delay: 20
   when: ids_update_rules | bool
   notify: Restart IDS
+
+- name: Validate combined Suricata rules
+  ansible.builtin.command:
+    cmd: suricata -T -c /etc/suricata/suricata.yaml
+  register: ids_rules_validation
+  failed_when: ids_rules_validation.rc != 0
+  changed_when: false
+  when: ids_update_rules | bool and ids_rules_update.changed
+
+- name: Install iptables-persistent for NFQUEUE rules
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: "'raspberrypi' not in group_names"
+
+- name: Ensure Suricata NFQUEUE chain exists (IPS inline)
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    chain_management: true
+    state: present
+  when: (ids_mode_normalized == 'ips') and ('raspberrypi' not in group_names)
+  notify: Save iptables rules
+
+- name: Add NFQUEUE rule in Suricata chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    jump: NFQUEUE
+    action: insert
+    comment: "Suricata IPS inline inspection"
+  when: (ids_mode_normalized == 'ips') and ('raspberrypi' not in group_names)
+  notify: Save iptables rules
+
+- name: Add Suricata chain jump for FORWARD chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: FORWARD
+    jump: "{{ ids_nfqueue_chain }}"
+    action: insert
+    comment: "Suricata IPS inline inspection"
+  when: (ids_mode_normalized == 'ips') and ('raspberrypi' not in group_names)
+  notify: Save iptables rules
+
+- name: Remove Suricata chain jump rules when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ item }}"
+    jump: "{{ ids_nfqueue_chain }}"
+    state: absent
+    comment: "Suricata IPS inline inspection"
+  loop:
+    - FORWARD
+    - INPUT
+  when: (ids_mode_normalized == 'ids') and ('raspberrypi' not in group_names)
+  notify: Save iptables rules
+
+- name: Remove NFQUEUE rule from Suricata chain when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    jump: NFQUEUE
+    state: absent
+    comment: "Suricata IPS inline inspection"
+  when: (ids_mode_normalized == 'ids') and ('raspberrypi' not in group_names)
+  notify: Save iptables rules
+
+- name: Remove Suricata NFQUEUE chain when in IDS mode
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    chain_management: true
+    state: absent
+  when: (ids_mode_normalized == 'ids') and ('raspberrypi' not in group_names)
+  notify: Save iptables rules
+
+- name: Disable NIC offloading for Suricata (GRO/LRO)
+  ansible.builtin.command:
+    cmd: "ethtool -K {{ item }} gro off lro off"
+  loop: "{{ ids_interfaces }}"
+  failed_when: false
+  changed_when: false
+  when: ids_mode_normalized == 'ips'
+
+- name: Ensure IDS service is enabled
+  ansible.builtin.service:
+    name: suricata
+    state: started
+    enabled: true
 
 - name: Ensure keyring dir exists
   ansible.builtin.file:
@@ -213,6 +311,12 @@
     update_cache: true
   when: ids_install_evebox | bool
 
+- name: Install pexpect dependency for EveBox password automation
+  ansible.builtin.apt:
+    name: python3-pexpect
+    state: present
+  when: ids_install_evebox | bool
+
 - name: Ensure EveBox directories exist
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -248,6 +352,7 @@
     group: root
     mode: "0644"
     content: |
+      CONFIG="-c {{ ids_evebox_config_path }}"
       EVEBOX_OPTS="--host {{ ids_evebox_host }} --port {{ ids_evebox_port }}
       {%- if not ids_evebox_auth_required %} --no-auth{% endif %}
       {%- if not ids_evebox_tls_enabled %} --no-tls{% endif %}
@@ -258,13 +363,32 @@
   when: ids_install_evebox | bool
   notify: Restart EveBox
 
-- name: Create EveBox user non-interactive
+- name: Create EveBox user if missing
   ansible.builtin.command:
     cmd: evebox config users -D {{ ids_evebox_data_dir }} add --username {{ ids_evebox_user }} --password "{{ ids_evebox_password }}"
   register: ids_evebox_user_add
   changed_when: ids_evebox_user_add.rc == 0
-  failed_when: ids_evebox_user_add.rc != 0 and 'UNIQUE constraint failed' not in ids_evebox_user_add.stderr
+  failed_when:
+    - ids_evebox_user_add.rc != 0
+    - "'UNIQUE constraint failed' not in ((ids_evebox_user_add.stderr | default('')) ~ (ids_evebox_user_add.stdout | default('')))"
+  no_log: true
   when: ids_install_evebox and ids_evebox_auth_required | bool
+  notify: Restart EveBox
+
+- name: Update EveBox password for existing user
+  ansible.builtin.expect:
+    command: evebox config users -D {{ ids_evebox_data_dir }} passwd {{ ids_evebox_user }}
+    timeout: 20
+    responses:
+      "(?i)password.*:": "{{ ids_evebox_password }}"
+      "(?i)again.*:": "{{ ids_evebox_password }}"
+  changed_when: true
+  no_log: true
+  when:
+    - ids_install_evebox
+    - ids_evebox_auth_required | bool
+    - ids_evebox_user_add.rc != 0
+    - "'UNIQUE constraint failed' in ((ids_evebox_user_add.stderr | default('')) ~ (ids_evebox_user_add.stdout | default('')))"
   notify: Restart EveBox
 
 - name: Ensure EveBox configuration database has correct permissions
@@ -272,7 +396,7 @@
     path: "{{ ids_evebox_data_dir }}/config.sqlite"
     owner: evebox
     group: evebox
-    mode: "0640"
+    mode: "0660"
   when: ids_install_evebox and ids_evebox_auth_required | bool
 
 - name: Ensure Suricata group exists for EveBox access
@@ -290,91 +414,9 @@
   when: ids_install_evebox | bool
   notify: Restart EveBox
 
-- name: Ensure IDS service is enabled
-  ansible.builtin.service:
-    name: suricata
-    state: started
-    enabled: true
-
 - name: Ensure EveBox service is enabled
   ansible.builtin.service:
     name: evebox
     state: started
     enabled: true
   when: ids_install_evebox | bool
-
-- name: Create EveBox user non-interactive
-  ansible.builtin.command:
-    cmd: evebox config users -D {{ ids_evebox_data_dir }} add --username {{ ids_evebox_user }} --password "{{ ids_evebox_password }}"
-  register: ids_evebox_user_add
-  changed_when: ids_evebox_user_add.rc == 0
-  failed_when: ids_evebox_user_add.rc != 0 and 'UNIQUE constraint failed' not in ids_evebox_user_add.stderr
-  when: ids_install_evebox and ids_evebox_auth_required | bool
-  notify: Restart EveBox
-
-- name: Flush handlers to ensure Suricata is running before applying iptables rules
-  ansible.builtin.meta: flush_handlers
-
-- name: Install iptables-persistent for NFQUEUE rules
-  ansible.builtin.apt:
-    name: iptables-persistent
-    state: present
-  environment:
-    DEBIAN_FRONTEND: noninteractive
-  when: "'raspberrypi' not in group_names"
-
-- name: Ensure Suricata NFQUEUE chain exists (IPS inline)
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    chain_management: true
-    state: present
-  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
-  notify: Save iptables rules
-
-- name: Add NFQUEUE rule in Suricata chain (IPS inline)
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    jump: NFQUEUE
-    action: insert
-    comment: "Suricata IPS inline inspection"
-    queue_bypass: true
-  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
-  notify: Save iptables rules
-
-- name: Add Suricata chain jump for FORWARD chain (IPS inline)
-  ansible.builtin.iptables:
-    chain: FORWARD
-    jump: "{{ ids_nfqueue_chain }}"
-    action: insert
-    comment: "Suricata IPS inline inspection"
-  when: ids_mode_normalized == 'ips' | bool and 'raspberrypi' not in group_names
-  notify: Save iptables rules
-
-- name: Remove Suricata chain jump rules when in IDS mode
-  ansible.builtin.iptables:
-    chain: "{{ item }}"
-    jump: "{{ ids_nfqueue_chain }}"
-    state: absent
-    comment: "Suricata IPS inline inspection"
-  loop:
-    - FORWARD
-    - INPUT
-  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
-  notify: Save iptables rules
-
-- name: Remove NFQUEUE rule from Suricata chain when in IDS mode
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    jump: NFQUEUE
-    state: absent
-    comment: "Suricata IPS inline inspection"
-  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
-  notify: Save iptables rules
-
-- name: Remove Suricata NFQUEUE chain when in IDS mode
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    chain_management: true
-    state: absent
-  when: ids_mode_normalized == 'ids' | bool and 'raspberrypi' not in group_names
-  notify: Save iptables rules

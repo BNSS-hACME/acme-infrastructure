@@ -378,6 +378,22 @@ def read_new_lines(log_file, cursor_file):
 
     text = new_data.decode("utf-8", errors="replace").strip()
     return text
+
+
+def split_log_batches(log_text, batch_size):
+    if batch_size <= 0:
+        return [log_text]
+
+    lines = [line for line in log_text.splitlines() if line.strip()]
+    if not lines:
+        return []
+
+    batches = []
+    for start in range(0, len(lines), batch_size):
+        batches.append("\n".join(lines[start:start + batch_size]))
+    return batches
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze server logs using an OpenAI-compatible API.")
     parser.add_argument("--log-file", help="Path to a log file",
@@ -392,6 +408,12 @@ def parse_args():
     parser.add_argument("--prompt-file", default=str(DEFAULT_PROMPT_FILE), help="Path to prompt file")
     parser.add_argument("--alert-file", default=DEFAULT_ALERT_FILE, help="File for detected alerts")
     parser.add_argument("--cursor-file", default=None, help="File to store log read state/cursor")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=0,
+        help="Analyze logs in batches of N lines (0 disables batching)",
+    )
     parser.add_argument("--pseudonymize", action="store_true",
                         help="Anonymize IPs and hostnames before sending to the LLM")
     return parser.parse_args()
@@ -464,22 +486,42 @@ def main():
         print("No log data found to analyze.", file=sys.stderr)
         return 2
 
-    reverse_map = {}
-    if args.pseudonymize:
-        log_chunk, reverse_map = pseudonymize_logs(log_chunk)
-        print("Pseudonymized log data before sending to LLM.")
+    log_batches = split_log_batches(log_chunk, args.batch_size)
+    if not log_batches:
+        print("No log data found to analyze.", file=sys.stderr)
+        return 2
 
-    print("Analyzing logs...")
-    analysis_result = analyze_logs_with_llm(log_chunk, prompt_template, client)
-    validated = validate_result(analysis_result)
+    if args.batch_size > 0:
+        print(f"Analyzing logs in {len(log_batches)} batch(es)...")
+    else:
+        print("Analyzing logs...")
 
-    if validated is None:
-        return 1
+    all_findings = []
+    for idx, current_batch in enumerate(log_batches, start=1):
+        reverse_map = {}
+        batch_for_llm = current_batch
 
-    if reverse_map:
-        validated["findings"] = depseudonymize_findings(
-            validated["findings"], reverse_map
-        )
+        if args.pseudonymize:
+            batch_for_llm, reverse_map = pseudonymize_logs(current_batch)
+            if args.batch_size > 0:
+                print(f"Pseudonymized batch {idx}/{len(log_batches)} before sending to LLM.")
+            else:
+                print("Pseudonymized log data before sending to LLM.")
+
+        analysis_result = analyze_logs_with_llm(batch_for_llm, prompt_template, client)
+        validated = validate_result(analysis_result)
+        if validated is None:
+            if args.batch_size > 0:
+                print(f"Batch {idx}/{len(log_batches)} failed validation.", file=sys.stderr)
+            return 1
+
+        findings = validated.get("findings", [])
+        if reverse_map:
+            findings = depseudonymize_findings(findings, reverse_map)
+        all_findings.extend(findings)
+
+    all_findings.sort(key=lambda entry: entry.get("confidence", 0.0), reverse=True)
+    validated = {"findings": all_findings}
 
     print("\n--- LLM Analysis Result ---")
     print(json.dumps(validated, indent=2, ensure_ascii=False))

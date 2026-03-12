@@ -5,6 +5,7 @@ ids_home_net: "10.0.50.0/24"
 ids_home_nets:
   - "{{ ids_home_net }}"
   - "10.0.11.0/24"
+ids_external_net: "!$HOME_NET"
 ids_log_dir: /var/log/suricata
 ids_alert_log: fast.log
 ids_eve_log: eve.json
@@ -17,6 +18,8 @@ ids_eve_types:
   - http
   - flow
   - drop
+
+ids_inspect_input: true
 
 ids_rule_path: /var/lib/suricata/rules
 ids_rule_files:
@@ -42,9 +45,10 @@ ids_rule_disable_patterns:
   - "group:emerging-games"
   - "group:emerging-p2p"
   - "group:emerging-policy"
-  - "re:^ET INFO "
-  - "re:^alert dnp3 "
-  - "re:^alert modbus "
+  - "re:dnp3"
+  - "re:DNP3"
+  - "re:modbus"
+  - "re:Modbus"
 ids_rule_drop_patterns:
   - "group:emerging-scan"
   - "group:emerging-policy"
@@ -79,6 +83,8 @@ ids_app_layer_protocols:
         double-decode-path: true
         double-decode-query: true
   ssh: {}
+  tcp: {}
+  udp: {}
 
 ids_update_rules: true
 ids_nfqueue_chain: SURICATA_NFQUEUE

@@ -32,6 +32,27 @@
     state: present
     update_cache: true
 
+- name: Create Loki group
+  ansible.builtin.group:
+    name: loki
+    system: true
+
+- name: Create Loki user
+  ansible.builtin.user:
+    name: loki
+    group: loki
+    system: true
+    create_home: false
+    home: /var/lib/loki
+
+- name: Ensure Loki data directory exists
+  ansible.builtin.file:
+    path: /var/lib/loki
+    state: directory
+    owner: loki
+    group: loki
+    mode: "0750"
+
 - name: Install Loki and Grafana
   ansible.builtin.apt:
     name:
@@ -109,5 +130,5 @@
     group: grafana
     mode: "0640"
   with_fileglob:
-    - "files/dashboards/*.json"
+    - "dashboards/*.json"
   notify: Restart Grafana

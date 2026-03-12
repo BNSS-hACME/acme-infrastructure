@@ -6,4 +6,3 @@
     log_shipper_suricata_enabled: true
   roles:
     - ids
-    - log_shipper
