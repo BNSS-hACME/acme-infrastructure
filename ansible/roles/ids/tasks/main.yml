@@ -173,8 +173,8 @@
   ansible.builtin.command:
     cmd: "suricata-update enable-source {{ item }}"
   loop: "{{ ids_rule_sources }}"
-  register: enable_sources_output
-  changed_when: "'already enabled' not in enable_sources_output.stdout"
+  register: ids_enable_sources_output
+  changed_when: "'already enabled' not in ids_enable_sources_output.stdout"
   when: ids_update_rules | bool
 
 - name: Update Suricata rules

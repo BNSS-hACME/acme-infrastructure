@@ -70,7 +70,7 @@ ids_rule_enable_patterns:
   - "group:emerging-web_server"
   - "group:emerging-web_specific_apps"
 ids_rule_disable_patterns:
- 
+
   - "re:dnp3"
   - "re:DNP3"
   - "re:modbus"
