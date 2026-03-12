@@ -5,7 +5,8 @@ ids_home_nets:
 ids_external_net: "any"
 ids_install_evebox: true
 ids_evebox_host: 0.0.0.0
-ids_mode: ips
+ids_mode: ids
+ids_inspect_input: false
 ids_custom_rules:
   - >
     alert tcp $EXTERNAL_NET any -> $HOME_NET [80,443,22]
@@ -42,31 +43,63 @@ ids_custom_rules:
     flow:to_server,established; content:"' OR 1=1"; nocase;
     classtype:web-application-attack; sid:1000011; rev:1;)
 
+ids_rule_sources:
+  - et/open
+  - aleksibovellan/nmap
 ids_rule_enable_patterns:
-  - "re:NMAP"
   - "re:nmap"
+  - "re:Nmap"
+  - "re:NMAP"
   - "re:sql"
+  - "re:SQL"
   - "re:sqli"
   - "re:scan"
+  - "re:Scan"
   - "re:SCAN"
+  - "re:recon"
+  - "re:Recon"
+  - "re:RECON"
   - "re:exploit"
+  - "re:Exploit"
+  - "re:EXPLOIT"
+  - "re:decoder"
+  - "re:SURICATA"
   - "group:emerging-scan"
   - "group:emerging-dos"
   - "group:emerging-sql"
   - "group:emerging-web_server"
   - "group:emerging-web_specific_apps"
+ids_rule_disable_patterns:
+ 
+  - "re:dnp3"
+  - "re:DNP3"
+  - "re:modbus"
+  - "re:Modbus"
+  - "re:request_line_missing_protocol"
 ids_rule_drop_patterns:
-  - "re:NMAP"
   - "re:nmap"
+  - "re:Nmap"
+  - "re:NMAP"
   - "re:sql"
+  - "re:SQL"
   - "re:sqli"
   - "re:scan"
+  - "re:Scan"
   - "re:SCAN"
+  - "re:recon"
+  - "re:Recon"
+  - "re:RECON"
   - "re:exploit"
+  - "re:Exploit"
+  - "re:EXPLOIT"
+  - "re:decoder"
+  - "re:SURICATA"
   - "group:emerging-scan"
   - "group:emerging-dos"
   - "group:emerging-sql"
   - "group:emerging-web_server"
   - "group:emerging-web_specific_apps"
+
+
 log_shipper_suricata_enabled: true
 log_shipper_security_enabled: false

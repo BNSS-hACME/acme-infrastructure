@@ -19,6 +19,8 @@ ids_eve_types:
   - flow
   - drop
 
+ids_inspect_input: true
+
 ids_rule_path: /var/lib/suricata/rules
 ids_rule_files:
   - suricata.rules
@@ -43,9 +45,10 @@ ids_rule_disable_patterns:
   - "group:emerging-games"
   - "group:emerging-p2p"
   - "group:emerging-policy"
-  - "re:^ET INFO "
-  - "re:^alert dnp3 "
-  - "re:^alert modbus "
+  - "re:dnp3"
+  - "re:DNP3"
+  - "re:modbus"
+  - "re:Modbus"
 ids_rule_drop_patterns:
   - "group:emerging-scan"
   - "group:emerging-policy"

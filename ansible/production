@@ -50,8 +50,6 @@ cloud.server.acme
 
 [ids]
 router.server.acme
-rpi1.server.acme
-rpi2.server.acme
 
 [dashboard]
 dvwa.server.acme
