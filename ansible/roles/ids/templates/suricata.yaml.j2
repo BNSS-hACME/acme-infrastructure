@@ -5,7 +5,7 @@
 vars:
   address-groups:
     HOME_NET: "[{{ ids_home_nets_normalized | join(',') }}]"
-    EXTERNAL_NET: "!$HOME_NET"
+    EXTERNAL_NET: "{{ ids_external_net }}"
     HTTP_SERVERS: "$HOME_NET"
     SMTP_SERVERS: "$HOME_NET"
     SQL_SERVERS: "$HOME_NET"
