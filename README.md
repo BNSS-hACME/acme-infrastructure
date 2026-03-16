@@ -158,7 +158,7 @@ ansible-playbook raspberrypi.yml
 acme-infrastructure/
 ├── ansible/      # Playbooks and roles for all services
 ├── vagrant/      # VM definitions and provisioning
-├── src/          # Python functions for the LLM-IDS
+├── src/          # Python functions for LLM-based log analysis
 ```
 
 ## Configuration
