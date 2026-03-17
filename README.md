@@ -175,12 +175,12 @@ All other configuration is within variables inside the `ansible` directory. All 
 - [Ollama](https://ollama.com/) — Local AI service
 - [DVWA](https://github.com/digininja/DVWA) — Damn Vulnerable Web Application
 - [Ansible](https://docs.ansible.com/) — Configuration management
-- [Suricata](https://suricata.io) - Intrution Detection
-- [ModSecurity](https://modsecurity.org) - ModSecurity
-- [Grafana](https://grafana.com/) - Monitoring Dashboard
-- [Loki](https://grafana.com/oss/loki/) - Log Aggregation
-- [Alloy](https://grafana.com/oss/alloy/) - Log Shipper
-- [EveBox](https://evebox.org/) - Suricata Event Viewer
+- [Suricata](https://suricata.io) — Intrution Detection
+- [ModSecurity](https://modsecurity.org) — ModSecurity
+- [Grafana](https://grafana.com/) — Monitoring Dashboard
+- [Loki](https://grafana.com/oss/loki/) — Log Aggregation
+- [Alloy](https://grafana.com/oss/alloy/) — Log Shipper
+- [EveBox](https://evebox.org/) — Suricata Event Viewer
 
 ## License
 
