@@ -161,6 +161,13 @@ acme-infrastructure/
 ├── src/          # Python functions for LLM-based log analysis
 ```
 
+## LLM-Based Log Analysis
+To detect attacks and compare LLM findings with ModSecurity rules, use:
+```bash
+python3 src/llm_pipeline/basic_ai_pipeline.py --log-file /var/log/apache2/dvwa_access.log --alert-file /tmp/llm_alerts.log
+python3 src/llm_pipeline/compare_ids.py --access-log /var/log/apache2/dvwa_access.log --modsec-log /var/log/apache2/modsec_audit.log --llm-log /tmp/llm_alerts.log
+```
+
 ## Configuration
 
 The only configuration variable is `BRIDGE_ADAPTER` within `vagrant/.envrc`, which is the name of the network adapter you want to bridge the router VM to.
