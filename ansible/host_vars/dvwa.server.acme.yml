@@ -12,7 +12,8 @@ firewall:
     - 10.0.11.0/24 # VPN Clients
     - 10.0.30.0/24 # Site-to-Site VPN
 log_shipper_loki_url: "http://localhost:3100/loki/api/v1/push"
-
+log_shipper_suricata_enabled: false
+log_shipper_security_enabled: true
 dvwa_db_database: !vault |
   $ANSIBLE_VAULT;1.1;AES256
   33363165373366323036643063306161313933336464396635366639623739313630363339646537

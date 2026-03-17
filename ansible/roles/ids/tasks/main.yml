@@ -10,6 +10,54 @@
   ansible.builtin.set_fact:
     ids_mode_normalized: "{{ ids_mode | lower }}"
 
+- name: Install iptables-persistent for NFQUEUE rules
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: "'raspberrypi' not in group_names"
+
+- name: Manage Suricata FORWARD jump (IPS inline)
+  ansible.builtin.iptables:
+    chain: FORWARD
+    jump: "{{ ids_nfqueue_chain }}"
+    comment: "Suricata IPS inline inspection"
+    state: "{{ 'present' if ids_mode_normalized == 'ips' else 'absent' }}"
+    action: insert
+  when: "'raspberrypi' not in group_names"
+  notify: Save iptables rules
+
+- name: Manage Suricata INPUT jump (IPS inline)
+  ansible.builtin.iptables:
+    chain: INPUT
+    jump: "{{ ids_nfqueue_chain }}"
+    comment: "Suricata IPS inline inspection"
+    state: "{{ 'present' if (ids_mode_normalized == 'ips' and ids_inspect_input | default(false) | bool) else 'absent' }}"
+    action: insert
+  when: "'raspberrypi' not in group_names"
+  notify: Save iptables rules
+
+- name: Manage Suricata NFQUEUE rule in chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    jump: NFQUEUE
+    state: "{{ 'present' if ids_mode_normalized == 'ips' else 'absent' }}"
+    action: insert
+    comment: "Suricata IPS inline inspection"
+    params:
+      queue-num: 0
+  when: "'raspberrypi' not in group_names"
+  notify: Save iptables rules
+
+- name: Manage Suricata NFQUEUE chain (IPS inline)
+  ansible.builtin.iptables:
+    chain: "{{ ids_nfqueue_chain }}"
+    chain_management: true
+    state: "{{ 'present' if ids_mode_normalized == 'ips' else 'absent' }}"
+  when: "'raspberrypi' not in group_names"
+  notify: Save iptables rules
+
 - name: Validate IDS interface list
   ansible.builtin.assert:
     that:
@@ -110,14 +158,16 @@
       {% endif %}
   notify: Restart IDS
 
-- name: Create Suricata systemd override directory
+- name: Ensure Suricata systemd override directory is present or absent
   ansible.builtin.file:
     path: /etc/systemd/system/suricata.service.d
-    state: directory
+    state: "{{ 'directory' if ids_mode_normalized == 'ips' else 'absent' }}"
     owner: root
     group: root
     mode: "0755"
-  when: ids_mode_normalized == 'ips'
+  notify:
+    - Reload systemd
+    - Restart IDS
 
 - name: Deploy Suricata systemd override
   ansible.builtin.template:
@@ -196,69 +246,6 @@
   failed_when: ids_rules_validation.rc != 0
   changed_when: false
   when: ids_update_rules | bool and ids_rules_update.changed
-
-- name: Install iptables-persistent for NFQUEUE rules
-  ansible.builtin.apt:
-    name: iptables-persistent
-    state: present
-  environment:
-    DEBIAN_FRONTEND: noninteractive
-  when: "'raspberrypi' not in group_names"
-
-- name: Ensure Suricata NFQUEUE chain exists (IPS inline)
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    chain_management: true
-    state: present
-  when: (ids_mode_normalized == 'ips') and ('raspberrypi' not in group_names)
-  notify: Save iptables rules
-
-- name: Add NFQUEUE rule in Suricata chain (IPS inline)
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    jump: NFQUEUE
-    action: insert
-    comment: "Suricata IPS inline inspection"
-  when: (ids_mode_normalized == 'ips') and ('raspberrypi' not in group_names)
-  notify: Save iptables rules
-
-- name: Add Suricata chain jump for FORWARD chain (IPS inline)
-  ansible.builtin.iptables:
-    chain: FORWARD
-    jump: "{{ ids_nfqueue_chain }}"
-    action: insert
-    comment: "Suricata IPS inline inspection"
-  when: (ids_mode_normalized == 'ips') and ('raspberrypi' not in group_names)
-  notify: Save iptables rules
-
-- name: Remove Suricata chain jump rules when in IDS mode
-  ansible.builtin.iptables:
-    chain: "{{ item }}"
-    jump: "{{ ids_nfqueue_chain }}"
-    state: absent
-    comment: "Suricata IPS inline inspection"
-  loop:
-    - FORWARD
-    - INPUT
-  when: (ids_mode_normalized == 'ids') and ('raspberrypi' not in group_names)
-  notify: Save iptables rules
-
-- name: Remove NFQUEUE rule from Suricata chain when in IDS mode
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    jump: NFQUEUE
-    state: absent
-    comment: "Suricata IPS inline inspection"
-  when: (ids_mode_normalized == 'ids') and ('raspberrypi' not in group_names)
-  notify: Save iptables rules
-
-- name: Remove Suricata NFQUEUE chain when in IDS mode
-  ansible.builtin.iptables:
-    chain: "{{ ids_nfqueue_chain }}"
-    chain_management: true
-    state: absent
-  when: (ids_mode_normalized == 'ids') and ('raspberrypi' not in group_names)
-  notify: Save iptables rules
 
 - name: Disable NIC offloading for Suricata (GRO/LRO)
   ansible.builtin.command:
