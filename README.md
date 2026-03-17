@@ -4,7 +4,7 @@ Infrastructure-as-code for an academic network security lab. Provisions a set of
 
 ## Overview
 
-This project is part of a course on network security and implements a full IAM and PKI stack using open-source tools: [Step CA](https://smallstep.com/docs/step-ca/) for certificate management, [Keycloak](https://www.keycloak.org/) for OIDC identity, [Suricata](https://suricata.io) for IDS and IPS, and [FreeRADIUS](https://freeradius.org/) for network authentication. Supporting services include OpenVPN, Nextcloud, an Apache HTTPS front-end, and an AI service — all running as VMs provisioned by Vagrant and configured by Ansible. Two Raspberry Pis provide physical WAN/LAN routing at each deployment site. Additionally, [DVWA](https://github.com/digininja/DVWA) is deployed as a vulnerable web application for comparing the performance between [ModSecurity](https://modsecurity.org) and with LLM-based log analysis.
+This project is part of a course on network security and implements a full IAM and PKI stack using open-source tools: [Step CA](https://smallstep.com/docs/step-ca/) for certificate management, [Keycloak](https://www.keycloak.org/) for OIDC identity, [Suricata](https://suricata.io) for IDS and IPS, and [FreeRADIUS](https://freeradius.org/) for network authentication. Supporting services include OpenVPN, Nextcloud, an Apache HTTPS front-end, and an AI service — all running as VMs provisioned by Vagrant and configured by Ansible. Two Raspberry Pis provide physical WAN/LAN routing at each deployment site. Additionally, [DVWA](https://github.com/digininja/DVWA) is deployed as a vulnerable web application for comparing the performance of [ModSecurity](https://modsecurity.org) and LLM-based log analysis. A monitoring stack leveraging [Grafana](https://grafana.com/), [Loki](https://grafana.com/oss/loki/), [Alloy](https://grafana.com/oss/alloy/), and [EveBox](https://evebox.org/) is used for log aggregation and alert visualization.
 
 ## Architecture
 
@@ -40,14 +40,14 @@ In Stockholm, the internal VM subnet is `10.0.50.0/24`. The Raspberry Pi at each
 
 | Service               | Host               | IP                     | Description                               |
 | --------------------- | ------------------ | ---------------------- | ----------------------------------------- |
-| Router                | router.server.acme | 10.0.10.50 / 10.0.50.1 | NAT gateway, bridges physical, IDS/IPS and VM LANs |
+| Router                | router.server.acme | 10.0.10.50 / 10.0.50.1 | NAT gateway, bridges physical, IDS/IPS (Suricata, EveBox, Alloy) and VM LANs |
 | DNS                   | dns.server.acme    | 10.0.50.10             | Unbound DNS resolver                      |
 | VPN                   | vpn.server.acme    | 10.0.50.11             | OpenVPN server                            |
 | Cloud Storage         | cloud.server.acme  | 10.0.50.12             | Nextcloud with OIDC integration           |
 | Certificate Authority | auth.server.acme   | 10.0.50.13             | Step CA, Keycloak OIDC, FreeRADIUS        |
 | AI                    | ai.server.acme     | 10.0.50.14             | AI service deployment                     |
 | Secure Web            | secure.server.acme | 10.0.50.20             | Apache HTTPS with OIDC authentication     |
-| DVWA                  | dvwa.server.acme   | 10.0.50.50             | Damn Vulnerable Web App (lab environment), ModSecurity |
+| DVWA                  | dvwa.server.acme   | 10.0.50.50             | Damn Vulnerable Web App (lab environment), ModSecurity, Grafana, Loki |
 
 ### Physical Devices
 
@@ -175,8 +175,12 @@ All other configuration is within variables inside the `ansible` directory. All 
 - [Ollama](https://ollama.com/) — Local AI service
 - [DVWA](https://github.com/digininja/DVWA) — Damn Vulnerable Web Application
 - [Ansible](https://docs.ansible.com/) — Configuration management
-- [Suricata](https://suricata.io) - Intrution Detection
-- [ModSecurity](https://modsecurity.org) - ModSecurity
+- [Suricata](https://suricata.io) — Intrution Detection
+- [ModSecurity](https://modsecurity.org) — ModSecurity
+- [Grafana](https://grafana.com/) — Monitoring Dashboard
+- [Loki](https://grafana.com/oss/loki/) — Log Aggregation
+- [Alloy](https://grafana.com/oss/alloy/) — Log Shipper
+- [EveBox](https://evebox.org/) — Suricata Event Viewer
 
 ## License
 
